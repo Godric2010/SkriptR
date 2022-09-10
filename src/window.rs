@@ -1,10 +1,9 @@
-use std::fmt::{Debug, Error};
 use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::error::OsError;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 
+#[allow(dead_code)]
 pub struct Window {
     name: String,
     logical_size: LogicalSize<u32>,
@@ -45,6 +44,7 @@ impl Window {
         })
     }
 
+    #[allow(unused)]
     pub fn run_window_loop(mut self){
 
         let mut should_configure_swapchain = true;
