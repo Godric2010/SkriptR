@@ -1,4 +1,5 @@
-use winit::dpi::LogicalSize;
+use std::fmt::{Debug, Error};
+use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::error::OsError;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
@@ -6,31 +7,39 @@ use winit::window::WindowBuilder;
 
 pub struct Window {
     name: String,
-    width: u32,
-    height: u32,
+    logical_size: LogicalSize<u32>,
+    pub physical_size: PhysicalSize<u32>,
     pub event_loop: EventLoop<()>,
     instance: winit::window::Window,
 }
 
 impl Window {
-    pub fn new(name: &str, width: u32, height: u32) -> Result<Self, OsError> {
+    pub fn new(name: &str, width: u32, height: u32) -> Option<Self> {
         let event_loop = EventLoop::new();
-        let window_size = LogicalSize::new(width, height);
+
+        let primary_monitor = match event_loop.primary_monitor(){
+            Some(monitor) => monitor,
+            None => return None,
+        };
+
+        let dpi = primary_monitor.scale_factor();
+        let logical_size = LogicalSize::new(width, height);
+        let physical_size = logical_size.to_physical(dpi);
 
         let window = match WindowBuilder::new()
             .with_title(name)
-            .with_inner_size(window_size)
+            .with_inner_size(logical_size)
             .with_always_on_top(true)
             .build(&event_loop) {
             Ok(win) => win,
-            Err(e) => {println!("{}", e); return Err(e)},
+            Err(e) => {println!("{}", e); return None},
         };
 
 
-        Ok(Window {
+        Some(Window {
             name: name.to_string(),
-            width,
-            height,
+            logical_size,
+            physical_size,
             event_loop,
             instance: window,
         })
@@ -48,8 +57,8 @@ impl Window {
                     WindowEvent::Resized(dims) => {
                         // Resize surface here!
 
-                        self.width = dims.width;
-                        self.height = dims.height;
+
+                        self.physical_size = PhysicalSize::new(dims.width, dims.height);
 
                         should_configure_swapchain = true;
                     }
