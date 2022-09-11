@@ -5,11 +5,11 @@ use winit::window::WindowBuilder;
 
 #[allow(dead_code)]
 pub struct Window {
-    name: String,
+    pub name: String,
     logical_size: LogicalSize<u32>,
     pub physical_size: PhysicalSize<u32>,
     pub event_loop: EventLoop<()>,
-    instance: winit::window::Window,
+    pub instance: winit::window::Window,
 }
 
 impl Window {
