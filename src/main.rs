@@ -1,4 +1,4 @@
-use crate::rendering::{create_renderer };
+use crate::rendering::RenderingController;
 
 mod rendering;
 mod window;
@@ -7,15 +7,18 @@ mod window;
 fn main() {
     println!("Hello, world!");
 
-    let window = match window::Window::new("SkriptR", 512, 512){
+    let mut window = match window::Window::new("SkriptR", 512, 512){
         Some(window) => window,
         None => return,
     };
 
-    let renderer = create_renderer(&window);
-    // if renderer.is_none(){
-    //     return;
-    // }
+    let renderer = RenderingController::new(&window);
+/*    if renderer.is_none(){
+        println!("Creating renderer failed!");
+        return;
+    }*/
+
+    window.set_renderer_instance(renderer);
 
     window.run_window_loop();
 
