@@ -22,10 +22,11 @@ impl RenderingController {
 
     pub fn reconfigure_swapchain(&mut self, surface_size: &PhysicalSize<u32>) {
         println!("Reconfigure sawpchain!");
+        self.renderer_instance.recreate_swapchain(surface_size);
     }
 
-    pub fn render(&self) {
+    pub fn render(&mut self) {
         // println!("Render!");
-        // self.renderer_instance.render();
+        self.renderer_instance.render();
     }
 }

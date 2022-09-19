@@ -1,8 +1,14 @@
 use std::mem::ManuallyDrop;
+use std::{iter, ptr};
+use std::borrow::Borrow;
 use gfx_hal::adapter::{Adapter, PhysicalDevice};
+use gfx_hal::command::{ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, RenderAttachmentInfo, SubpassContents};
+use gfx_hal::device::Device;
+use gfx_hal::image::Extent;
 use gfx_hal::Instance;
-use gfx_hal::queue::{QueueFamily, QueueGroup};
-use gfx_hal::window::{Extent2D, Surface};
+use gfx_hal::pso::{Rect, Viewport};
+use gfx_hal::queue::{Queue, QueueFamily, QueueGroup};
+use gfx_hal::window::{Extent2D, PresentationSurface, Surface, SwapchainConfig};
 use winit::dpi::PhysicalSize;
 use crate::rendering::commands::CommandBufferController;
 use crate::rendering::pass::RenderPass;
@@ -18,6 +24,10 @@ pub struct Renderer<B: gfx_hal::Backend> {
     command_buffer_controller: CommandBufferController<B>,
     render_passes: Vec<RenderPass<B>>,
     graphics_pipelines: Vec<GraphicsPipeline<B>>,
+    submission_complete_fence: ManuallyDrop<B::Fence>,
+    rendering_complete_semaphore: ManuallyDrop<B::Semaphore>,
+    framebuffer: ManuallyDrop<B::Framebuffer>,
+    viewport: Viewport,
 }
 
 impl<B: gfx_hal::Backend> Renderer<B> {
@@ -99,6 +109,43 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         let graphics_pipeline = pipeline_result.unwrap();
 
 
+        let submission_complete_fence_result = device.create_fence(true);
+        if submission_complete_fence_result.is_err() {
+            println!("Failed to create fence! Out of memory!");
+            return None;
+        }
+        let submission_complete_fence = submission_complete_fence_result.unwrap();
+
+        let rendering_complete_semaphore_result = device.create_semaphore();
+        if rendering_complete_semaphore_result.is_err() {
+            println!("Failed to create semaphore! Out of memory!");
+            return None;
+        }
+        let rendering_complete_semaphore = rendering_complete_semaphore_result.unwrap();
+
+
+        let caps = surface.capabilities(&adapter.physical_device);
+        let swap_config = SwapchainConfig::from_caps(&caps, render_pass.color_format, surface_extent);
+        let fat = swap_config.framebuffer_attachment();
+
+        let framebuffer = ManuallyDrop::new(unsafe {
+            device.create_framebuffer(&*render_pass.pass, iter::once(fat), Extent {
+                width: surface_extent.width,
+                height: surface_extent.height,
+                depth: 1
+            }).unwrap()
+        });
+
+        let viewport = Viewport {
+            rect: Rect {
+                x: 0,
+                y: 0,
+                w: surface_extent.width as _,
+                h: surface_extent.height as _,
+            },
+            depth: 0.0..1.0,
+        };
+
         Some(Self {
             instance: ManuallyDrop::new(instance),
             surface: ManuallyDrop::new(surface),
@@ -109,8 +156,110 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             command_buffer_controller,
             render_passes: vec![render_pass],
             graphics_pipelines: vec![graphics_pipeline],
-
+            submission_complete_fence: ManuallyDrop::new(submission_complete_fence),
+            rendering_complete_semaphore: ManuallyDrop::new(rendering_complete_semaphore),
+            framebuffer,
+            viewport,
         })
+    }
+
+    pub fn recreate_swapchain(&mut self, new_surface_size: &PhysicalSize<u32>) {
+        self.surface_extent = Extent2D {
+            width: new_surface_size.width,
+            height: new_surface_size.height
+        };
+
+        let capabilities = self.surface.capabilities(&self.adapter.physical_device);
+        let mut swapchain_config = SwapchainConfig::from_caps(&capabilities, self.render_passes[0].color_format, self.surface_extent);
+
+        // Fixes some fullscreen slowdowns on macOS
+        if capabilities.image_count.contains(&3) {
+            swapchain_config.image_count = 3;
+        }
+
+        let swap_extent = swapchain_config.extent.to_extent();
+        self.viewport.rect.w = swap_extent.width as _;
+        self.viewport.rect.h = swap_extent.height as _;
+
+        unsafe {
+            self.device.wait_idle().unwrap();
+
+            self.device.destroy_framebuffer(ManuallyDrop::into_inner(ptr::read(&self.framebuffer)));
+
+
+            let graphics_render_pass = &self.render_passes[0].pass;
+
+            let framebuffer =
+                self.device.create_framebuffer(&graphics_render_pass, iter::once(swapchain_config.framebuffer_attachment()), swap_extent).unwrap();
+            self.framebuffer = ManuallyDrop::new(framebuffer);
+        }
+
+        let res = unsafe { self.surface.configure_swapchain(&self.device, swapchain_config) };
+        if res.is_err() {
+            println!("Failed to recreate swapchain!")
+        }
+    }
+
+    pub fn render(&mut self) {
+        let size = PhysicalSize {
+            width: self.surface_extent.width,
+            height: self.surface_extent.height,
+        };
+
+        let surface_image = unsafe {
+            match self.surface.acquire_image(!0) {
+                Ok((image, _)) => image,
+                Err(_) => {
+                    self.recreate_swapchain(&size);
+                    return;
+                }
+            }
+        };
+
+        let mut graphics_command_buffer = &mut self.command_buffer_controller.graphics_buffer;
+        unsafe {
+            graphics_command_buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
+            graphics_command_buffer.set_viewports(0, iter::once(self.viewport.clone()));
+            graphics_command_buffer.set_scissors(0, iter::once(self.viewport.rect));
+            graphics_command_buffer.bind_graphics_pipeline(&self.graphics_pipelines[0].pipeline);
+
+            graphics_command_buffer.begin_render_pass(
+                &self.render_passes[0].pass,
+                &self.framebuffer,
+                self.viewport.rect,
+                iter::once(RenderAttachmentInfo {
+                    image_view: surface_image.borrow(),
+                    clear_value: ClearValue {
+                        color: ClearColor {
+                            float32: [1.0, 1.0, 1.0, 1.0],
+                        },
+                    },
+                }),
+                SubpassContents::Inline,
+            );
+            graphics_command_buffer.draw(0..3, 0..1);
+            graphics_command_buffer.end_render_pass();
+            graphics_command_buffer.finish();
+        };
+
+        unsafe {
+            self.queue_group.queues[0].submit(
+                iter::once(&*graphics_command_buffer),
+                iter::empty(),
+                iter::once(&*self.rendering_complete_semaphore),
+                Some(&mut self.submission_complete_fence)
+            );
+
+            let result = self.queue_group.queues[0].present(
+                &mut self.surface,
+                surface_image,
+                Some(&mut self.rendering_complete_semaphore)
+            );
+
+            if result.is_err() {
+                self.recreate_swapchain(&size);
+            }
+        }
     }
 }
 
@@ -118,12 +267,18 @@ impl<B: gfx_hal::Backend> Drop for Renderer<B> {
     fn drop(&mut self) {
         // self.device.wait_idle().unwrap()
         unsafe {
+            let rendering_complete_semaphore = ManuallyDrop::take(&mut self.rendering_complete_semaphore);
+            self.device.destroy_semaphore(rendering_complete_semaphore);
+
+            let submission_complete_fence = ManuallyDrop::take(&mut self.submission_complete_fence);
+            self.device.destroy_fence(submission_complete_fence);
+
             for graphics_pipeline in self.graphics_pipelines.iter_mut() {
                 graphics_pipeline.destroy(&self.device);
             }
 
             let amount_of_render_passes = self.render_passes.len();
-            for _ in 0..amount_of_render_passes{
+            for _ in 0..amount_of_render_passes {
                 let rp = self.render_passes.pop().unwrap();
                 rp.destroy(&self.device);
             }

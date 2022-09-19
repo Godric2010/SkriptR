@@ -1,14 +1,13 @@
 use std::iter;
 use std::mem::ManuallyDrop;
 use gfx_hal::device::Device;
-use gfx_hal::format::Format;
 use gfx_hal::pass::Subpass;
-use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Element, EntryPoint, Face, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, Specialization};
+use gfx_hal::pso::{BlendState, ColorBlendDesc, ColorMask, EntryPoint, Face, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, Specialization};
 use shaderc::ShaderKind;
 
 pub struct GraphicsPipeline<B: gfx_hal::Backend> {
     pipeline_layout: ManuallyDrop<B::PipelineLayout>,
-    pipeline: ManuallyDrop<B::GraphicsPipeline>,
+    pub pipeline: ManuallyDrop<B::GraphicsPipeline>,
 }
 
 impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
@@ -60,7 +59,7 @@ impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
         };
 
 
-        let subpass = Subpass { index: 1, main_pass: &*render_pass.pass };
+        let subpass = Subpass { index: 0, main_pass: &*render_pass.pass };
 
         let mut pipeline_desc = GraphicsPipelineDesc::new(primitive_assembler,
                                                           rasterizer,
@@ -71,8 +70,6 @@ impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
             mask: ColorMask::ALL,
             blend: Some(BlendState::ALPHA),
         });
-
-        println!("Pipeline horray!");
 
         let pipeline_result = unsafe {
             device.create_graphics_pipeline(&pipeline_desc, None)
@@ -96,7 +93,7 @@ impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
         })
     }
 
-    pub unsafe fn destroy(&mut self, device: &B::Device){
+    pub unsafe fn destroy(&mut self, device: &B::Device) {
         let pipeline = ManuallyDrop::take(&mut self.pipeline);
         device.destroy_graphics_pipeline(pipeline);
 
@@ -107,7 +104,7 @@ impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
 
 #[allow(duplicate_macro_attributes)]
 fn compile_shader(glsl: &str, shader_kind: ShaderKind) -> Vec<u32> {
-    let mut compiler = shaderc::Compiler::new().unwrap();
+    let compiler = shaderc::Compiler::new().unwrap();
 
     let compiled_shader = compiler.compile_into_spirv(glsl, shader_kind, "unnamed", "main", None).expect("Failed to compile shader");
     compiled_shader.as_binary().to_vec()

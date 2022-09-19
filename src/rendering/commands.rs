@@ -6,7 +6,7 @@ use gfx_hal::queue::QueueFamilyId;
 
 pub struct CommandBufferController<B: gfx_hal::Backend> {
     pool: ManuallyDrop<B::CommandPool>,
-    graphics_buffer: B::CommandBuffer,
+    pub graphics_buffer: B::CommandBuffer,
 }
 
 impl<B: gfx_hal::Backend> CommandBufferController<B> {
