@@ -283,6 +283,11 @@ impl<B: gfx_hal::Backend> Drop for Renderer<B> {
                 rp.destroy(&self.device);
             }
 
+            let framebuffer = ManuallyDrop::take(&mut self.framebuffer);
+            self.device.destroy_framebuffer(framebuffer);
+
+            self.surface.unconfigure_swapchain(&self.device);
+
             self.command_buffer_controller.destroy(&self.device);
 
             let surface = ManuallyDrop::take(&mut self.surface);
