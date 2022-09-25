@@ -5,8 +5,6 @@ mod window;
 
 
 fn main() {
-    println!("Hello, world!");
-
     let mut window = match window::Window::new("SkriptR", 512, 512){
         Some(window) => window,
         None => return,

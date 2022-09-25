@@ -231,7 +231,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                     image_view: surface_image.borrow(),
                     clear_value: ClearValue {
                         color: ClearColor {
-                            float32: [1.0, 1.0, 1.0, 1.0],
+                            float32: [0.0, 0.0, 0.0, 0.0],
                         },
                     },
                 }),
