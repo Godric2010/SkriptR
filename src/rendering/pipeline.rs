@@ -1,18 +1,24 @@
 use std::iter;
 use std::mem::ManuallyDrop;
 use gfx_hal::device::Device;
+use gfx_hal::format::Format;
 use gfx_hal::pass::Subpass;
-use gfx_hal::pso::{BlendState, ColorBlendDesc, ColorMask, EntryPoint, Face, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, Specialization};
+use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Element, EntryPoint, Face, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
 use shaderc::ShaderKind;
+use crate::rendering::mesh::Vertex;
 
 pub struct GraphicsPipeline<B: gfx_hal::Backend> {
-    pipeline_layout: ManuallyDrop<B::PipelineLayout>,
+    pub pipeline_layout: ManuallyDrop<B::PipelineLayout>,
     pub pipeline: ManuallyDrop<B::GraphicsPipeline>,
 }
 
 impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
     pub fn new(device: &B::Device, render_pass: &mut crate::rendering::pass::RenderPass<B>) -> Option<Self> {
-        let pipeline_layout_result = unsafe { device.create_pipeline_layout(iter::empty(), iter::empty()) };
+        let push_constant_bytes = std::mem::size_of::<Vertex>() as u32;
+
+        let pipeline_layout_result = unsafe {
+            device.create_pipeline_layout(iter::empty(), iter::once((ShaderStageFlags::VERTEX, 0..push_constant_bytes)))
+        };
         if pipeline_layout_result.is_err() {
             println!("Pipeline layout; Out of memory");
             return None;
@@ -45,8 +51,29 @@ impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
 
 
         let primitive_assembler = PrimitiveAssemblerDesc::Vertex {
-            buffers: &[],
-            attributes: &[],
+            buffers: &[VertexBufferDesc{
+                binding: 0,
+                stride: std::mem::size_of::<Vertex>() as u32,
+                rate: VertexInputRate::Vertex,
+            }],
+            attributes: &[
+                AttributeDesc{
+                    location: 0,
+                    binding: 0,
+                    element: Element{
+                        format: Format::Rg32Sfloat,
+                        offset: 0
+                    }
+                },
+                AttributeDesc{
+                    location: 1,
+                    binding:0,
+                    element: Element{
+                        format: Format::Rgba32Sfloat,
+                        offset: 12
+                    },
+                },
+            ],
             input_assembler: InputAssemblerDesc::new(Primitive::TriangleList),
             vertex: vs_entry,
             tessellation: None,

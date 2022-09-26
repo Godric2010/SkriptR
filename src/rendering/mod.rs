@@ -1,4 +1,5 @@
 use winit::dpi::PhysicalSize;
+use crate::rendering::mesh::Mesh;
 use crate::rendering::renderer::Renderer;
 use crate::window::Window;
 
@@ -6,6 +7,7 @@ mod renderer;
 mod commands;
 mod pass;
 mod pipeline;
+pub mod mesh;
 
 
 pub struct RenderingController {
@@ -24,7 +26,7 @@ impl RenderingController {
         self.renderer_instance.recreate_swapchain(surface_size);
     }
 
-    pub fn render(&mut self) {
-        self.renderer_instance.render();
+    pub fn render(&mut self, meshes: &[Mesh]) {
+        self.renderer_instance.render(meshes);
     }
 }
