@@ -8,6 +8,7 @@ mod commands;
 mod pass;
 mod pipeline;
 pub mod mesh;
+mod buffers;
 
 
 pub struct RenderingController {
@@ -20,6 +21,10 @@ impl RenderingController {
             renderer_instance: Renderer::new(&window.name, &window.physical_size, &window
                 .instance).unwrap()
         }
+    }
+
+    pub fn add_mesh_to_renderer(&mut self, mesh : &Mesh){
+        self.renderer_instance.register_mesh_vertex_buffer(mesh);
     }
 
     pub fn reconfigure_swapchain(&mut self, surface_size: &PhysicalSize<u32>) {

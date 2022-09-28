@@ -1,16 +1,21 @@
 use std::mem::ManuallyDrop;
 use std::{iter, ptr};
 use std::borrow::Borrow;
+use backend::Backend;
 use gfx_hal::adapter::{Adapter, PhysicalDevice};
+use gfx_hal::buffer::{SubRange, Usage};
 use gfx_hal::command::{ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, RenderAttachmentInfo, SubpassContents};
 use gfx_hal::device::Device;
 use gfx_hal::image::Extent;
-use gfx_hal::Instance;
-use gfx_hal::pso::{Rect, Viewport};
+use gfx_hal::{Instance, MemoryTypeId};
+use gfx_hal::memory::{Properties, Segment, SparseFlags};
+use gfx_hal::pso::{Rect, ShaderStageFlags, Viewport};
 use gfx_hal::queue::{Queue, QueueFamily, QueueGroup};
 use gfx_hal::window::{Extent2D, PresentationSurface, Surface, SwapchainConfig};
 use winit::dpi::PhysicalSize;
+use crate::rendering::buffers::Buffer;
 use crate::rendering::commands::CommandBufferController;
+use crate::rendering::mesh::{Mesh, Vertex};
 use crate::rendering::pass::RenderPass;
 use crate::rendering::pipeline::GraphicsPipeline;
 
@@ -28,7 +33,17 @@ pub struct Renderer<B: gfx_hal::Backend> {
     rendering_complete_semaphore: ManuallyDrop<B::Semaphore>,
     framebuffer: ManuallyDrop<B::Framebuffer>,
     viewport: Viewport,
+    vertex_buffers: Vec<Buffer<B>>,
 }
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+struct PushConstants {
+    // transform: [[f32; 4]; 4],
+    position: [f32; 3],
+    scale: f32,
+}
+
 
 impl<B: gfx_hal::Backend> Renderer<B> {
     pub fn new(name: &str, surface_size: &PhysicalSize<u32>, window: &winit::window::Window) -> Option<Self> {
@@ -146,6 +161,8 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             depth: 0.0..1.0,
         };
 
+        let vertex_buffers = Vec::new();
+
         Some(Self {
             instance: ManuallyDrop::new(instance),
             surface: ManuallyDrop::new(surface),
@@ -160,6 +177,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             rendering_complete_semaphore: ManuallyDrop::new(rendering_complete_semaphore),
             framebuffer,
             viewport,
+            vertex_buffers,
         })
     }
 
@@ -200,7 +218,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         }
     }
 
-    pub fn render(&mut self) {
+    pub fn render(&mut self, meshes: &[Mesh]) {
         let size = PhysicalSize {
             width: self.surface_extent.width,
             height: self.surface_extent.height,
@@ -216,7 +234,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             }
         };
 
-        let mut graphics_command_buffer = &mut self.command_buffer_controller.graphics_buffer;
+        let graphics_command_buffer = &mut self.command_buffer_controller.graphics_buffer;
         unsafe {
             graphics_command_buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
             graphics_command_buffer.set_viewports(0, iter::once(self.viewport.clone()));
@@ -237,7 +255,27 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 }),
                 SubpassContents::Inline,
             );
-            graphics_command_buffer.draw(0..3, 0..1);
+
+            for mesh in meshes {
+                let  position= [0.0,0.0,0.0]; /*Renderer::<B>::make_transform([0., 0., 0.0], 0.0, 100.0);*/
+                let scale= 2.0;
+                let push_constant = &[PushConstants {
+                    position,
+                    scale,
+                }];
+
+                graphics_command_buffer.bind_vertex_buffers(0, iter::once((&*self.vertex_buffers[0].buffer, SubRange::WHOLE)));
+
+                graphics_command_buffer.push_graphics_constants(
+                    &*self.graphics_pipelines[0].pipeline_layout,
+                    ShaderStageFlags::VERTEX,
+                    0,
+                    Renderer::<B>::push_constant_bytes(&push_constant[0]),
+                );
+                let vertex_count = mesh.vertices.len() as u32;
+                graphics_command_buffer.draw(0..vertex_count, 0..1);
+            }
+
             graphics_command_buffer.end_render_pass();
             graphics_command_buffer.finish();
         };
@@ -261,12 +299,56 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             }
         }
     }
+
+    fn push_constant_bytes<T>(push_constants: &T) -> &[u32] {
+        let size_in_bytes = std::mem::size_of::<Vertex>();
+        let size_in_u32s = size_in_bytes / std::mem::size_of::<u32>();
+        let start_ptr = push_constants as *const T as *const u32;
+        unsafe { std::slice::from_raw_parts(start_ptr, size_in_u32s) }
+    }
+
+    fn make_transform(translate: [f32; 3], angle: f32, scale: f32) -> [[f32; 4]; 4] {
+        let c = angle.cos() * scale;
+        let s = angle.sin() * scale;
+        let [dx, dy, dz] = translate;
+
+        [
+            [c, 0.0, s, 0.0],
+            [0.0, scale, 0.0, 0.0],
+            [-s, 0.0, c, 0.0],
+            [dx, dy, dz, 1.0],
+        ]
+    }
+
+
+    pub fn register_mesh_vertex_buffer(&mut self, mesh: &Mesh) {
+        let vertex_buffer_length = mesh.vertices.len() * std::mem::size_of::<Vertex>();
+        let mut buffer: Buffer<B> = match Buffer::new(&*self.device, &self.adapter.physical_device, vertex_buffer_length, Usage::VERTEX, Properties::CPU_VISIBLE) {
+            Some(buffer) => buffer,
+            None => {
+                println!("buffer registration failed!");
+                return;
+            },
+        };
+
+        unsafe {
+            let mapped_memory = self.device.map_memory(&mut *buffer.buffer_memory, Segment::ALL).expect("Failed to map memory!");
+            std::ptr::copy_nonoverlapping(mesh.vertices.as_ptr() as *const u8, mapped_memory, vertex_buffer_length);
+            let result = self.device.flush_mapped_memory_ranges(iter::once((&*buffer.buffer_memory, Segment::ALL))).expect("out of memory");
+            self.device.unmap_memory(&mut *buffer.buffer_memory);
+        }
+        self.vertex_buffers.push(buffer);
+    }
 }
 
 impl<B: gfx_hal::Backend> Drop for Renderer<B> {
     fn drop(&mut self) {
         // self.device.wait_idle().unwrap()
         unsafe {
+            for vertex_buffer in &mut self.vertex_buffers {
+                vertex_buffer.release(&self.device);
+            }
+
             let rendering_complete_semaphore = ManuallyDrop::take(&mut self.rendering_complete_semaphore);
             self.device.destroy_semaphore(rendering_complete_semaphore);
 

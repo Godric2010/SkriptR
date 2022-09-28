@@ -65,6 +65,11 @@ impl Window {
             }
         };
 
+        let demo_quad = crate::rendering::mesh::create_primitive_quad();
+        let meshes= vec![demo_quad];
+
+        rendering_controller.add_mesh_to_renderer(&meshes[0]);
+
         self.event_loop.run(move |event, _, control_flow| {
             match event {
                 Event::WindowEvent { event, .. } => match event {
@@ -86,7 +91,7 @@ impl Window {
                         rendering_controller.reconfigure_swapchain(&self.physical_size);
                         should_configure_swapchain = false;
                     }
-                    rendering_controller.render();
+                    rendering_controller.render(&meshes);
                 }
                 _ => (),
             }
