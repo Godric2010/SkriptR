@@ -2,6 +2,8 @@ use crate::rendering::RenderingController;
 
 mod rendering;
 mod window;
+pub mod component;
+pub mod entity;
 
 
 fn main() {
@@ -17,9 +19,6 @@ fn main() {
     }*/
 
     window.set_renderer_instance(renderer);
-
     window.run_window_loop();
-
-
+    
 }
-
