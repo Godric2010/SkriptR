@@ -1,3 +1,4 @@
+use std::any::Any;
 use super::entitiy_component::Component;
 
 pub struct Transform{
@@ -13,7 +14,11 @@ pub struct Transform{
 impl Transform{
 
     pub fn new() -> Self{
-        Transform { position: [0.0, 0.0, 0.0], rotation: 0.0, scale: 0.0, is_active: true }
+        Transform { position: [0.0, 0.0, 0.0], rotation: 0.0, scale: 1.0, is_active: true }
+    }
+
+    pub fn set_position(&mut self, x: f32, y: f32, z: f32){
+        self.position = [x, y, z];
     }
 
     pub fn get_transform_matrix(&self) -> [[f32; 4]; 4]{
@@ -27,13 +32,13 @@ impl Transform{
             [0.0, self.scale, 0.0, 0.0],
             [-s, 0.0, c, 0.0],
             [dx, dy, dz, 1.0],
-            ];
+        ];
 
         matrix
     }
 }
 
-impl Component for Transform{
+impl Component<'_> for Transform{
     fn enable(&mut self) {
         self.is_active = true;
     }
@@ -44,5 +49,13 @@ impl Component for Transform{
 
     fn update(&self) {
         println!("Update transform!")
+    }
+
+    fn as_any(&self) -> &dyn Any {
+       self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }

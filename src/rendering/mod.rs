@@ -1,4 +1,5 @@
 use winit::dpi::PhysicalSize;
+use crate::entity::Entity;
 use crate::rendering::mesh::Mesh;
 use crate::rendering::renderer::Renderer;
 use crate::window::Window;
@@ -31,7 +32,7 @@ impl RenderingController {
         self.renderer_instance.recreate_swapchain(surface_size);
     }
 
-    pub fn render(&mut self, meshes: &[Mesh]) {
-        self.renderer_instance.render(meshes);
+    pub fn render(&mut self, entities: &[Entity]) {
+        self.renderer_instance.render(entities);
     }
 }

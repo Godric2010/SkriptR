@@ -2,6 +2,8 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
+use crate::component::mesh_renderer::MeshRenderer;
+use crate::entity::Entity;
 use crate::rendering::RenderingController;
 
 #[allow(dead_code)]
@@ -65,10 +67,13 @@ impl Window {
             }
         };
 
-        let demo_quad = crate::rendering::mesh::create_primitive_quad();
-        let meshes= vec![demo_quad];
+        let entity_a = Entity::new();
+        let mut scene = vec![entity_a];
 
-        rendering_controller.add_mesh_to_renderer(&meshes[0]);
+        scene[0].get_transform().set_position(0.1,0.2,0.);
+        let mesh_a = &scene[0].get_component::<MeshRenderer>().unwrap().mesh;
+
+        rendering_controller.add_mesh_to_renderer(mesh_a);
 
         self.event_loop.run(move |event, _, control_flow| {
             match event {
@@ -91,7 +96,7 @@ impl Window {
                         rendering_controller.reconfigure_swapchain(&self.physical_size);
                         should_configure_swapchain = false;
                     }
-                    rendering_controller.render(&meshes);
+                    rendering_controller.render(&scene);
                 }
                 _ => (),
             }

@@ -1,4 +1,4 @@
-use std::mem::ManuallyDrop;
+use std::mem::{ManuallyDrop, size_of};
 use std::{iter, ptr};
 use std::borrow::Borrow;
 use backend::Backend;
@@ -13,6 +13,9 @@ use gfx_hal::pso::{Rect, ShaderStageFlags, Viewport};
 use gfx_hal::queue::{Queue, QueueFamily, QueueGroup};
 use gfx_hal::window::{Extent2D, PresentationSurface, Surface, SwapchainConfig};
 use winit::dpi::PhysicalSize;
+use crate::component::mesh_renderer::MeshRenderer;
+use crate::component::transform::Transform;
+use crate::entity::Entity;
 use crate::rendering::buffers::Buffer;
 use crate::rendering::commands::CommandBufferController;
 use crate::rendering::mesh::{Mesh, Vertex};
@@ -39,9 +42,9 @@ pub struct Renderer<B: gfx_hal::Backend> {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 struct PushConstants {
-    // transform: [[f32; 4]; 4],
-    position: [f32; 3],
-    scale: f32,
+    transform: [[f32; 4]; 4],
+    // position: [f32; 3],
+    // scale: f32,
 }
 
 
@@ -218,7 +221,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         }
     }
 
-    pub fn render(&mut self, meshes: &[Mesh]) {
+    pub fn render(&mut self, entities: &[Entity]) {
         let size = PhysicalSize {
             width: self.surface_extent.width,
             height: self.surface_extent.height,
@@ -256,13 +259,18 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 SubpassContents::Inline,
             );
 
-            for mesh in meshes {
-                let  position= [0.0,0.0,0.0]; /*Renderer::<B>::make_transform([0., 0., 0.0], 0.0, 100.0);*/
-                let scale= 2.0;
+            for entity in entities{
+
+                let transform = entity.get_component::<Transform>().unwrap();
+
+                let position= transform.position.clone(); /*Renderer::<B>::make_transform([0., 0., 0.0], 0.0, 100.0);*/
+                let scale= transform.scale.clone();
+                let transform_matrix = transform.get_transform_matrix();
                 let push_constant = &[PushConstants {
-                    position,
-                    scale,
+                    transform: transform_matrix,
                 }];
+
+                let mesh = &entity.get_component::<MeshRenderer>().unwrap().mesh;
 
                 graphics_command_buffer.bind_vertex_buffers(0, iter::once((&*self.vertex_buffers[0].buffer, SubRange::WHOLE)));
 
@@ -270,7 +278,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                     &*self.graphics_pipelines[0].pipeline_layout,
                     ShaderStageFlags::VERTEX,
                     0,
-                    Renderer::<B>::push_constant_bytes(&push_constant[0]),
+                    Renderer::<B>::push_constant_bytes(&push_constant[0]), // TODO: hier liegt irgendwo der fehler!
                 );
                 let vertex_count = mesh.vertices.len() as u32;
                 graphics_command_buffer.draw(0..vertex_count, 0..1);
@@ -301,13 +309,13 @@ impl<B: gfx_hal::Backend> Renderer<B> {
     }
 
     fn push_constant_bytes<T>(push_constants: &T) -> &[u32] {
-        let size_in_bytes = std::mem::size_of::<Vertex>();
-        let size_in_u32s = size_in_bytes / std::mem::size_of::<u32>();
+        let size_in_bytes = size_of::<[[f32; 4];4]>();
+        let size_in_u32s = size_in_bytes / size_of::<u32>();
         let start_ptr = push_constants as *const T as *const u32;
         unsafe { std::slice::from_raw_parts(start_ptr, size_in_u32s) }
     }
 
-    fn make_transform(translate: [f32; 3], angle: f32, scale: f32) -> [[f32; 4]; 4] {
+/*    fn make_transform(translate: [f32; 3], angle: f32, scale: f32) -> [[f32; 4]; 4] {
         let c = angle.cos() * scale;
         let s = angle.sin() * scale;
         let [dx, dy, dz] = translate;
@@ -319,7 +327,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             [dx, dy, dz, 1.0],
         ]
     }
-
+*/
 
     pub fn register_mesh_vertex_buffer(&mut self, mesh: &Mesh) {
         let vertex_buffer_length = mesh.vertices.len() * std::mem::size_of::<Vertex>();
