@@ -68,9 +68,10 @@ impl Window {
         };
 
         let entity_a = Entity::new();
-        let mut scene = vec![entity_a];
+        let entity_b = Entity::new();
+        let mut scene = vec![entity_a, entity_b];
 
-        scene[0].get_transform().set_position(0.1,0.2,0.);
+        scene[0].get_transform().set_position(0.5,0.2,0.);
         let mesh_a = &scene[0].get_component::<MeshRenderer>().unwrap().mesh;
 
         rendering_controller.add_mesh_to_renderer(mesh_a);

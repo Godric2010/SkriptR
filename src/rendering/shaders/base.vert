@@ -14,5 +14,5 @@ layout(location = 0) out vec4 vertex_color;
 
 void main(){
     vertex_color = vec4(0.6, 0.2, 0.8, 1.0);
-    gl_Position = vec4(position, 1.0);
+    gl_Position = push_constants.transform * vec4(position, 1.0);
 }

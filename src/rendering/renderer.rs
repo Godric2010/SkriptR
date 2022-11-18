@@ -21,6 +21,8 @@ use crate::rendering::commands::CommandBufferController;
 use crate::rendering::mesh::{Mesh, Vertex};
 use crate::rendering::pass::RenderPass;
 use crate::rendering::pipeline::GraphicsPipeline;
+use crate::rendering::push_constants;
+use crate::rendering::push_constants::PushConstants;
 
 pub struct Renderer<B: gfx_hal::Backend> {
     instance: ManuallyDrop<B::Instance>,
@@ -39,13 +41,7 @@ pub struct Renderer<B: gfx_hal::Backend> {
     vertex_buffers: Vec<Buffer<B>>,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-struct PushConstants {
-    transform: [[f32; 4]; 4],
-    // position: [f32; 3],
-    // scale: f32,
-}
+
 
 
 impl<B: gfx_hal::Backend> Renderer<B> {
@@ -263,22 +259,22 @@ impl<B: gfx_hal::Backend> Renderer<B> {
 
                 let transform = entity.get_component::<Transform>().unwrap();
 
-                let position= transform.position.clone(); /*Renderer::<B>::make_transform([0., 0., 0.0], 0.0, 100.0);*/
-                let scale= transform.scale.clone();
                 let transform_matrix = transform.get_transform_matrix();
-                let push_constant = &[PushConstants {
+                let push_constant = PushConstants {
                     transform: transform_matrix,
-                }];
+                };
 
                 let mesh = &entity.get_component::<MeshRenderer>().unwrap().mesh;
 
                 graphics_command_buffer.bind_vertex_buffers(0, iter::once((&*self.vertex_buffers[0].buffer, SubRange::WHOLE)));
 
+                let push_constant_bytes = push_constant.push_constant_bytes();
+
                 graphics_command_buffer.push_graphics_constants(
                     &*self.graphics_pipelines[0].pipeline_layout,
                     ShaderStageFlags::VERTEX,
                     0,
-                    Renderer::<B>::push_constant_bytes(&push_constant[0]), // TODO: hier liegt irgendwo der fehler!
+                    push_constant_bytes,
                 );
                 let vertex_count = mesh.vertices.len() as u32;
                 graphics_command_buffer.draw(0..vertex_count, 0..1);
@@ -307,13 +303,13 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             }
         }
     }
-
-    fn push_constant_bytes<T>(push_constants: &T) -> &[u32] {
-        let size_in_bytes = size_of::<[[f32; 4];4]>();
-        let size_in_u32s = size_in_bytes / size_of::<u32>();
-        let start_ptr = push_constants as *const T as *const u32;
-        unsafe { std::slice::from_raw_parts(start_ptr, size_in_u32s) }
-    }
+    //
+    // fn push_constant_bytes<T>(push_constants: &T) -> &[u32] {
+    //     let size_in_bytes = size_of::<T>();
+    //     let size_in_u32s = size_in_bytes / size_of::<u32>();
+    //     let start_ptr = push_constants as *const T as *const u32;
+    //     unsafe { std::slice::from_raw_parts(start_ptr, size_in_u32s) }
+    // }
 
 /*    fn make_transform(translate: [f32; 3], angle: f32, scale: f32) -> [[f32; 4]; 4] {
         let c = angle.cos() * scale;

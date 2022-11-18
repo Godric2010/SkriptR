@@ -6,6 +6,7 @@ use gfx_hal::pass::Subpass;
 use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Element, EntryPoint, Face, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
 use shaderc::ShaderKind;
 use crate::rendering::mesh::Vertex;
+use crate::rendering::push_constants::PushConstants;
 
 pub struct GraphicsPipeline<B: gfx_hal::Backend> {
     pub pipeline_layout: ManuallyDrop<B::PipelineLayout>,
@@ -14,7 +15,7 @@ pub struct GraphicsPipeline<B: gfx_hal::Backend> {
 
 impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
     pub fn new(device: &B::Device, render_pass: &mut crate::rendering::pass::RenderPass<B>) -> Option<Self> {
-        let push_constant_bytes = std::mem::size_of::<Vertex>() as u32;
+        let push_constant_bytes = std::mem::size_of::<PushConstants>() as u32;
 
         let pipeline_layout_result = unsafe {
             device.create_pipeline_layout(iter::empty(), iter::once((ShaderStageFlags::VERTEX, 0..push_constant_bytes)))
