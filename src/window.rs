@@ -72,11 +72,16 @@ impl Window {
         let mut scene = vec![entity_a, entity_b];
 
         scene[0].get_transform().set_position(0.5,0.2,0.);
+        // scene[1].get_transform().set_rotation(1.5);
+        scene[1].get_transform().set_scale(3.);
         let mesh_a = &scene[0].get_component::<MeshRenderer>().unwrap().mesh;
 
         rendering_controller.add_mesh_to_renderer(mesh_a);
 
+        let start_time = std::time::Instant::now();
+        let mut anim = 0.0;
         self.event_loop.run(move |event, _, control_flow| {
+            anim = start_time.elapsed().as_secs_f32().sin() * 0.5 + 0.5;
             match event {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::ExitWithCode(0),
@@ -96,6 +101,9 @@ impl Window {
                     if should_configure_swapchain{
                         rendering_controller.reconfigure_swapchain(&self.physical_size);
                         should_configure_swapchain = false;
+                    }
+                    for entity in &mut scene {
+                        entity.update()
                     }
                     rendering_controller.render(&scene);
                 }

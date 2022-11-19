@@ -25,8 +25,8 @@ impl Component<'_> for MeshRenderer{
         todo!()
     }
 
-    fn update(&self) {
-        todo!()
+    fn update(&mut self) {
+
     }
 
     fn as_any(&self) -> &dyn Any {

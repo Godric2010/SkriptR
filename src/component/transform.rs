@@ -21,9 +21,17 @@ impl Transform{
         self.position = [x, y, z];
     }
 
+    pub fn set_rotation(&mut self, angle: f32){
+        self.rotation = angle;
+    }
+
+    pub fn set_scale(&mut self, scale: f32){
+        self.scale = scale;
+    }
+
     pub fn get_transform_matrix(&self) -> [[f32; 4]; 4]{
-        let c = self.rotation.cos() * self.scale;
-        let s = self.rotation.sin() * self.scale;
+        let c = self.rotation.to_radians().cos() * self.scale;
+        let s = self.rotation.to_radians().sin() * self.scale;
         let [dx, dy, dz] = self.position;
 
         let matrix =
@@ -47,8 +55,13 @@ impl Component<'_> for Transform{
 
     }
 
-    fn update(&self) {
-        println!("Update transform!")
+    fn update(&mut self) {
+
+       let mut rotation = self.rotation;
+        rotation += 1.0;
+
+       // self.set_position(position[0], position[1], position[2])
+        self.set_rotation(rotation);
     }
 
     fn as_any(&self) -> &dyn Any {

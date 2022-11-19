@@ -48,4 +48,10 @@ impl Entity {
         }
 
     }
+
+    pub fn update(&mut self){
+        for component in &mut self.components {
+            component.update();
+        }
+    }
 }
