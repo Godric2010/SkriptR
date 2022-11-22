@@ -13,8 +13,8 @@ use gfx_hal::pso::{Rect, ShaderStageFlags, Viewport};
 use gfx_hal::queue::{Queue, QueueFamily, QueueGroup};
 use gfx_hal::window::{Extent2D, PresentationSurface, Surface, SwapchainConfig};
 use winit::dpi::PhysicalSize;
-use crate::component::mesh_renderer::MeshRenderer;
-use crate::component::transform::Transform;
+use crate::ecs::mesh_renderer::MeshRenderer;
+use crate::ecs::transform::Transform;
 use crate::entity::Entity;
 use crate::rendering::buffers::Buffer;
 use crate::rendering::commands::CommandBufferController;
@@ -255,11 +255,11 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 SubpassContents::Inline,
             );
 
-            for entity in entities{
+/*            for entity in entities{
 
-                let transform = entity.get_component::<Transform>().unwrap();
+                // let transform = entity.get_component::<Transform>().unwrap();
 
-                let transform_matrix = transform.get_transform_matrix();
+                let transform_matrix = [[0.0,0.0,0.0, 0.0], [0.0,0.0,0.0, 0.0], [0.0,0.0,0.0, 0.0], [0.0,0.0,0.0, 0.0]];/*transform.get_transform_matrix();*/
                 let push_constant = PushConstants {
                     transform: transform_matrix,
                 };
@@ -278,7 +278,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 );
                 let vertex_count = mesh.vertices.len() as u32;
                 graphics_command_buffer.draw(0..vertex_count, 0..1);
-            }
+            }*/
 
             graphics_command_buffer.end_render_pass();
             graphics_command_buffer.finish();

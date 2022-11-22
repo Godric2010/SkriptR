@@ -1,5 +1,5 @@
 use std::any::Any;
-use crate::component::entitiy_component::Component;
+use crate::ecs::component::Component;
 use crate::rendering::mesh::Mesh;
 
 pub struct MeshRenderer{
@@ -16,7 +16,7 @@ impl MeshRenderer{
     }
 }
 
-impl Component<'_> for MeshRenderer{
+/*impl Component<'_> for MeshRenderer{
     fn enable(&mut self) {
         todo!()
     }
@@ -36,4 +36,4 @@ impl Component<'_> for MeshRenderer{
     fn as_any_mut(&mut self) -> &mut dyn Any {
        self
     }
-}
+}*/

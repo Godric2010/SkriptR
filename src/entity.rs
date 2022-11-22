@@ -1,10 +1,10 @@
-use crate::component::{entitiy_component::Component, transform::Transform, mesh_renderer::MeshRenderer};
+use crate::ecs::{component::Component, transform::Transform, mesh_renderer::MeshRenderer};
 use crate::rendering::mesh;
 
 pub struct Entity {
     pub name: String,
 
-    components: Vec<Box<dyn for<'a> Component<'a>>>,
+    // components: Vec<Box<dyn Component>>,
 }
 
 impl Entity {
@@ -12,12 +12,12 @@ impl Entity {
     {
         let name = String::from("New Entity");
         let primitive = mesh::create_primitive_quad();
-        let components: Vec<Box<dyn for<'a> Component<'a> + 'static>> = vec![Box::new(Transform::new()), Box::new(MeshRenderer::new(primitive))];
+        // let components: Vec<Box<dyn Component<'a>+ 'static>> = vec![Box::new(Transform::new()), Box::new(MeshRenderer::new(primitive))];
 
-        Self { name, components }
+        Self { name, /*components*/ }
     }
 
-    pub fn get_transform(&mut self) -> &mut Transform {
+/*    pub fn get_transform(&mut self) -> &mut Transform {
         let index = 0;
 
         let transform_boxed = &mut self.components[index];
@@ -26,9 +26,9 @@ impl Entity {
             None => panic!("Transform is not at index 0!"),
         };
         transform
-    }
+    }*/
 
-    pub fn get_component<'a, C: Component<'a> + 'static>(&self) -> Option<&C> {
+/*    pub fn get_component< C: Component + 'static>(&self) -> Option<&C> {
         let mut target_component: Option<&C> = None;
 
         for c in &self.components {
@@ -40,18 +40,18 @@ impl Entity {
             break;
         }
         target_component
-    }
+    }*/
 
-    fn enable(&mut self){
+   /* fn enable(&mut self){
         for component in &mut self.components {
             component.enable()
         }
 
-    }
+    }*/
 
-    pub fn update(&mut self){
+/*    pub fn update(&mut self){
         for component in &mut self.components {
             component.update();
         }
-    }
+    }*/
 }

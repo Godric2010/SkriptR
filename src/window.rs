@@ -2,7 +2,7 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
-use crate::component::mesh_renderer::MeshRenderer;
+use crate::ecs::mesh_renderer::MeshRenderer;
 use crate::entity::Entity;
 use crate::rendering::RenderingController;
 
@@ -71,12 +71,12 @@ impl Window {
         let entity_b = Entity::new();
         let mut scene = vec![entity_a, entity_b];
 
-        scene[0].get_transform().set_position(0.5,0.2,0.);
+        // scene[0].get_transform().set_position(0.5,0.2,0.);
         // scene[1].get_transform().set_rotation(1.5);
-        scene[1].get_transform().set_scale(3.);
-        let mesh_a = &scene[0].get_component::<MeshRenderer>().unwrap().mesh;
+        // scene[1].get_transform().set_scale(3.);
+        // let mesh_a = &scene[0].get_component::<MeshRenderer>().unwrap().mesh;
 
-        rendering_controller.add_mesh_to_renderer(mesh_a);
+        // rendering_controller.add_mesh_to_renderer(mesh_a);
 
         let start_time = std::time::Instant::now();
         let mut anim = 0.0;
@@ -102,9 +102,9 @@ impl Window {
                         rendering_controller.reconfigure_swapchain(&self.physical_size);
                         should_configure_swapchain = false;
                     }
-                    for entity in &mut scene {
+                   /* for entity in &mut scene {
                         entity.update()
-                    }
+                    }*/
                     rendering_controller.render(&scene);
                 }
                 _ => (),

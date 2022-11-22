@@ -1,5 +1,5 @@
 use std::any::Any;
-use super::entitiy_component::Component;
+use super::component::Component;
 
 pub struct Transform{
 
@@ -46,7 +46,7 @@ impl Transform{
     }
 }
 
-impl Component<'_> for Transform{
+/*impl Component<'_> for Transform{
     fn enable(&mut self) {
         self.is_active = true;
     }
@@ -71,4 +71,4 @@ impl Component<'_> for Transform{
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-}
+}*/

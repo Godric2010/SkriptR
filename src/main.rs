@@ -4,7 +4,7 @@ use crate::rendering::RenderingController;
 
 mod rendering;
 mod window;
-pub mod component;
+pub mod ecs;
 pub mod entity;
 
 
