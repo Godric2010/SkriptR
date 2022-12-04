@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::cell::{RefCell, RefMut};
 use crate::component::ComponentVec;
 
@@ -22,6 +23,12 @@ impl World {
         }
         self.entities_count += 1;
         entity_id
+    }
+
+    pub fn remove_entity(&mut self, entity: usize){
+        for component_vec in self.component_vecs.iter_mut(){
+            component_vec.set_none(entity)
+        }
     }
 
     pub fn add_component<ComponentType: 'static>(&mut self, entity: usize, component: ComponentType) {

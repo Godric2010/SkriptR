@@ -62,4 +62,31 @@ mod ecs_tests{
 
     }
 
+    #[test]
+    fn remove_entity(){
+        let mut world = World::new();
+        let entity01 = world.new_entity();
+        let entity02 = world.new_entity();
+
+        let demo01 = Demo{val: 13};
+        let demo02 = Demo{val: 42};
+
+        world.add_component(entity01, demo01);
+        world.add_component(entity02, demo02);
+
+        world.remove_entity(entity01);
+
+        let demo_vec = world.borrow_component_vec_mut::<Demo>().unwrap();
+        assert_eq!(demo_vec.len(), 2);
+
+        let borrowed_demos = demo_vec.iter().enumerate();
+        for borrowed_demo in borrowed_demos{
+            match borrowed_demo.0 {
+                0 => assert!(borrowed_demo.1.as_ref().is_none()),
+                1 => assert!(borrowed_demo.1.as_ref().is_some()),
+                _=> panic!()
+            }
+        }
+    }
+
 }
