@@ -1,7 +1,7 @@
-use std::any::Any;
 use std::cell::{RefCell, RefMut};
 use crate::component::ComponentVec;
 
+pub(crate) type EntityId = usize;
 
 pub struct World {
     entities_count: usize,
@@ -16,7 +16,7 @@ impl World {
         }
     }
 
-    pub fn new_entity(&mut self) -> usize {
+    pub fn new_entity(&mut self) -> EntityId {
         let entity_id = self.entities_count;
         for component_vec in self.component_vecs.iter_mut() {
             component_vec.push_none();
@@ -25,13 +25,13 @@ impl World {
         entity_id
     }
 
-    pub fn remove_entity(&mut self, entity: usize){
+    pub fn remove_entity(&mut self, entity: EntityId){
         for component_vec in self.component_vecs.iter_mut(){
             component_vec.set_none(entity)
         }
     }
 
-    pub fn add_component<ComponentType: 'static>(&mut self, entity: usize, component: ComponentType) {
+    pub fn add_component<ComponentType: 'static>(&mut self, entity: EntityId, component: ComponentType) {
 
         // Search for the component vec belonging to this entity and add the component
         for component_vec in self.component_vecs.iter_mut() {
@@ -53,7 +53,7 @@ impl World {
         self.component_vecs.push(Box::new(RefCell::new(new_component_vec)))
     }
 
-    pub fn remove_component<ComponentType: 'static>(&mut self, entity: usize){
+    pub fn remove_component<ComponentType: 'static>(&mut self, entity: EntityId){
         for component_vec in self.component_vecs.iter_mut(){
             if let Some(component_vec) = component_vec.as_any_mut().downcast_mut::<RefCell<Vec<Option<ComponentType>>>>(){
                 component_vec.get_mut()[entity] = None;
