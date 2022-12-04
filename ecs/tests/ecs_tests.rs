@@ -1,8 +1,6 @@
 
 #[cfg(test)]
 mod ecs_tests{
-    use std::borrow::Borrow;
-    use std::ops::Index;
     use resa_ecs::world::World;
 
     struct Demo{val: i32}
@@ -39,6 +37,28 @@ mod ecs_tests{
 
         assert!(d.is_some());
         assert_eq!(d.unwrap().val, 42)
+
+    }
+
+    #[test]
+    fn remove_component(){
+        let mut world = World::new();
+        let entity01 = world.new_entity();
+
+        let demo = Demo{val: 42};
+
+        world.add_component(entity01, demo);
+        world.remove_component::<Demo>(entity01);
+
+        let demo_vec = world.borrow_component_vec_mut::<Demo>().unwrap();
+
+        let borrowed_demos = demo_vec.iter().enumerate();
+        for borrowed_demo in borrowed_demos{
+            if borrowed_demo.0 == entity01{
+                let demo = borrowed_demo.1.as_ref();
+                assert!(demo.is_none())
+            }
+        }
 
     }
 

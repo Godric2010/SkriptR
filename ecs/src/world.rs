@@ -1,6 +1,4 @@
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::{Ref, RefCell, RefMut};
-use std::ops::Index;
+use std::cell::{RefCell, RefMut};
 use crate::component::ComponentVec;
 
 
@@ -48,14 +46,23 @@ impl World {
         self.component_vecs.push(Box::new(RefCell::new(new_component_vec)))
     }
 
-    pub fn borrow_component_vec<ComponentType: 'static>(&self) -> Option<Ref<Vec<Option<ComponentType>>>> {
-        for component_vec in self.component_vecs.iter() {
-            if let Some(component_vec) = component_vec.as_any().downcast_ref::<RefCell<Vec<Option<ComponentType>>>>() {
-                return Some(component_vec.borrow());
+    pub fn remove_component<ComponentType: 'static>(&mut self, entity: usize){
+        for component_vec in self.component_vecs.iter_mut(){
+            if let Some(component_vec) = component_vec.as_any_mut().downcast_mut::<RefCell<Vec<Option<ComponentType>>>>(){
+                component_vec.get_mut()[entity] = None;
+                return;
             }
         }
-        None
     }
+
+    // pub fn borrow_component_vec<ComponentType: 'static>(&self) -> Option<Ref<Vec<Option<ComponentType>>>> {
+    //     for component_vec in self.component_vecs.iter() {
+    //         if let Some(component_vec) = component_vec.as_any().downcast_ref::<RefCell<Vec<Option<ComponentType>>>>() {
+    //             return Some(component_vec.borrow());
+    //         }
+    //     }
+    //     None
+    // }
 
     pub fn borrow_component_vec_mut<ComponentType: 'static>(&self) -> Option<RefMut<Vec<Option<ComponentType>>>> {
         for component_vec in self.component_vecs.iter() {
@@ -66,23 +73,5 @@ impl World {
         None
     }
 
-    pub fn borrow_component_from_entity<ComponentType: 'static>(&self, entity: usize) -> Option<&ComponentType> {
-        let components = self.borrow_component_vec_mut::<ComponentType>().unwrap();
-        let mut target = None;
-        for component in components.iter().enumerate() {
-            if component.0 == entity {
-                target = component.1.as_ref();
-                break;
-            }
-        }
-        target
 
-        // if components.is_none() {
-        //     return &None;
-        // }
-
-        // let component_vec = components.unwrap();
-        // let component:&Option<ComponentType> = component_vec.index(entity);
-        // component
-    }
 }
