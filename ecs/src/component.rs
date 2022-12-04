@@ -1,15 +1,16 @@
 use std::any::Any;
 use std::cell::RefCell;
 
-pub trait Component{
+pub(crate) trait ComponentVec{
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn push_none(&mut self);
+
 }
 
-impl <T: 'static> Component for RefCell<Vec<Option<T>>>{
+impl<T: 'static> ComponentVec for RefCell<Vec<Option<T>>> {
     fn as_any(&self) -> &dyn Any {
-        self as &dyn Any
+       self as &dyn Any
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
