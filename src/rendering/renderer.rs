@@ -13,9 +13,6 @@ use gfx_hal::pso::{Rect, ShaderStageFlags, Viewport};
 use gfx_hal::queue::{Queue, QueueFamily, QueueGroup};
 use gfx_hal::window::{Extent2D, PresentationSurface, Surface, SwapchainConfig};
 use winit::dpi::PhysicalSize;
-use crate::ecs::mesh_renderer::MeshRenderer;
-use crate::ecs::transform::Transform;
-use crate::entity::Entity;
 use crate::rendering::buffers::Buffer;
 use crate::rendering::commands::CommandBufferController;
 use crate::rendering::mesh::{Mesh, Vertex};
@@ -23,6 +20,8 @@ use crate::rendering::pass::RenderPass;
 use crate::rendering::pipeline::GraphicsPipeline;
 use crate::rendering::push_constants;
 use crate::rendering::push_constants::PushConstants;
+use resa_ecs::world::{EntityId, World};
+use crate::rendering::mesh_renderer::MeshRenderer;
 
 pub struct Renderer<B: gfx_hal::Backend> {
     instance: ManuallyDrop<B::Instance>,
@@ -217,7 +216,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         }
     }
 
-    pub fn render(&mut self, entities: &[Entity]) {
+    pub fn render(&mut self, world: &mut World) {
         let size = PhysicalSize {
             width: self.surface_extent.width,
             height: self.surface_extent.height,
@@ -254,6 +253,8 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 }),
                 SubpassContents::Inline,
             );
+
+            let mesh_renderers = world.borrow_component_vec_mut::<MeshRenderer>().unwrap();
 
 /*            for entity in entities{
 

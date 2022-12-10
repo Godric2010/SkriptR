@@ -1,7 +1,7 @@
 use std::cell::{RefCell, RefMut};
 use crate::component::ComponentVec;
 
-pub(crate) type EntityId = usize;
+pub type EntityId = usize;
 
 pub struct World {
     entities_count: usize,

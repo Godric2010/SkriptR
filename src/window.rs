@@ -2,8 +2,8 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
-use crate::ecs::mesh_renderer::MeshRenderer;
-use crate::entity::Entity;
+use resa_ecs::world::World;
+use crate::rendering::mesh::create_primitive_quad;
 use crate::rendering::RenderingController;
 
 #[allow(dead_code)]
@@ -57,7 +57,7 @@ impl Window {
     }
 
     #[allow(unused)]
-    pub fn run_window_loop(mut self) {
+    pub fn run_window_loop(mut self, world: &'static mut World) {
         let mut should_configure_swapchain = true;
         let mut rendering_controller = match self.rendering_controller {
             Some(rendering_controller) => rendering_controller,
@@ -67,16 +67,17 @@ impl Window {
             }
         };
 
-        let entity_a = Entity::new();
-        let entity_b = Entity::new();
-        let mut scene = vec![entity_a, entity_b];
+        // let entity_a = Entity::new();
+        // let entity_b = Entity::new();
+        // let mut scene = vec![entity_a, entity_b];
 
         // scene[0].get_transform().set_position(0.5,0.2,0.);
         // scene[1].get_transform().set_rotation(1.5);
         // scene[1].get_transform().set_scale(3.);
         // let mesh_a = &scene[0].get_component::<MeshRenderer>().unwrap().mesh;
 
-        // rendering_controller.add_mesh_to_renderer(mesh_a);
+
+        rendering_controller.add_mesh_to_renderer(&create_primitive_quad());
 
         let start_time = std::time::Instant::now();
         let mut anim = 0.0;
@@ -105,7 +106,7 @@ impl Window {
                    /* for entity in &mut scene {
                         entity.update()
                     }*/
-                    rendering_controller.render(&scene);
+                    rendering_controller.render(world);
                 }
                 _ => (),
             }
