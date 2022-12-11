@@ -13,7 +13,7 @@ mod transform;
 
 
 fn main() {
-    let mut window = match window::Window::new("SkriptR", 512, 512){
+    let mut window = match window::Window::new("SkriptR", 512, 512) {
         Some(window) => window,
         None => return,
     };
@@ -21,17 +21,26 @@ fn main() {
     let mut world: World = World::new();
     let entity01 = world.new_entity();
 
-    let transform = Transform{position: [0.0,0.0,0.0]};
+    let transform = Transform { position: [0.0, 0.0, 0.0] };
+    let mesh_renderer = MeshRenderer { mesh: create_primitive_quad(), color: [0.5, 0.0, 0.0, 1.0] };
 
     world.add_component(entity01, transform);
+    world.add_component(entity01, mesh_renderer);
+
+
+    let entity02 = world.new_entity();
+    let transform = Transform { position: [0.8, 0.0, 0.0] };
+    let mesh_renderer = MeshRenderer { mesh: create_primitive_quad(), color: [0.0, 0.0, 1.0, 1.0] };
+    world.add_component(entity02, transform);
+    world.add_component(entity02, mesh_renderer);
 
     let renderer = RenderingController::new(&window);
-/*    if renderer.is_none(){
-        println!("Creating renderer failed!");
-        return;
-    }*/
+    /*    if renderer.is_none(){
+            println!("Creating renderer failed!");
+            return;
+        }*/
 
     window.set_renderer_instance(renderer);
-    window.run_window_loop(&mut world);
-    
+    println!("Start rendering!");
+    window.run_window_loop(world);
 }

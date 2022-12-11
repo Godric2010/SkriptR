@@ -22,6 +22,7 @@ use crate::rendering::push_constants;
 use crate::rendering::push_constants::PushConstants;
 use resa_ecs::world::{EntityId, World};
 use crate::rendering::mesh_renderer::MeshRenderer;
+use crate::transform::Transform;
 
 pub struct Renderer<B: gfx_hal::Backend> {
     instance: ManuallyDrop<B::Instance>,
@@ -39,8 +40,6 @@ pub struct Renderer<B: gfx_hal::Backend> {
     viewport: Viewport,
     vertex_buffers: Vec<Buffer<B>>,
 }
-
-
 
 
 impl<B: gfx_hal::Backend> Renderer<B> {
@@ -145,7 +144,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             device.create_framebuffer(&*render_pass.pass, iter::once(fat), Extent {
                 width: surface_extent.width,
                 height: surface_extent.height,
-                depth: 1
+                depth: 1,
             }).unwrap()
         });
 
@@ -182,7 +181,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
     pub fn recreate_swapchain(&mut self, new_surface_size: &PhysicalSize<u32>) {
         self.surface_extent = Extent2D {
             width: new_surface_size.width,
-            height: new_surface_size.height
+            height: new_surface_size.height,
         };
 
         let capabilities = self.surface.capabilities(&self.adapter.physical_device);
@@ -255,18 +254,20 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             );
 
             let mesh_renderers = world.borrow_component_vec_mut::<MeshRenderer>().unwrap();
+            let transforms = world.borrow_component_vec_mut::<Transform>().unwrap();
 
-/*            for entity in entities{
 
-                // let transform = entity.get_component::<Transform>().unwrap();
+            for (index, mesh_renderer) in mesh_renderers.iter().enumerate() {
+                let position = transforms[index].as_ref().unwrap().position;
 
-                let transform_matrix = [[0.0,0.0,0.0, 0.0], [0.0,0.0,0.0, 0.0], [0.0,0.0,0.0, 0.0], [0.0,0.0,0.0, 0.0]];/*transform.get_transform_matrix();*/
+                let mesh_binder = &mesh_renderer.as_ref().unwrap();
+                let transform_matrix = Renderer::<B>::make_transform(position, 0.0, 1.0);
                 let push_constant = PushConstants {
                     transform: transform_matrix,
+                    color: mesh_binder.color,
                 };
 
-                let mesh = &entity.get_component::<MeshRenderer>().unwrap().mesh;
-
+                let mesh = &mesh_binder.mesh;
                 graphics_command_buffer.bind_vertex_buffers(0, iter::once((&*self.vertex_buffers[0].buffer, SubRange::WHOLE)));
 
                 let push_constant_bytes = push_constant.push_constant_bytes();
@@ -279,7 +280,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 );
                 let vertex_count = mesh.vertices.len() as u32;
                 graphics_command_buffer.draw(0..vertex_count, 0..1);
-            }*/
+            }
 
             graphics_command_buffer.end_render_pass();
             graphics_command_buffer.finish();
@@ -290,13 +291,13 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 iter::once(&*graphics_command_buffer),
                 iter::empty(),
                 iter::once(&*self.rendering_complete_semaphore),
-                Some(&mut self.submission_complete_fence)
+                Some(&mut self.submission_complete_fence),
             );
 
             let result = self.queue_group.queues[0].present(
                 &mut self.surface,
                 surface_image,
-                Some(&mut self.rendering_complete_semaphore)
+                Some(&mut self.rendering_complete_semaphore),
             );
 
             if result.is_err() {
@@ -312,7 +313,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
     //     unsafe { std::slice::from_raw_parts(start_ptr, size_in_u32s) }
     // }
 
-/*    fn make_transform(translate: [f32; 3], angle: f32, scale: f32) -> [[f32; 4]; 4] {
+    fn make_transform(translate: [f32; 3], angle: f32, scale: f32) -> [[f32; 4]; 4] {
         let c = angle.cos() * scale;
         let s = angle.sin() * scale;
         let [dx, dy, dz] = translate;
@@ -324,7 +325,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             [dx, dy, dz, 1.0],
         ]
     }
-*/
+
 
     pub fn register_mesh_vertex_buffer(&mut self, mesh: &Mesh) {
         let vertex_buffer_length = mesh.vertices.len() * std::mem::size_of::<Vertex>();
@@ -333,7 +334,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             None => {
                 println!("buffer registration failed!");
                 return;
-            },
+            }
         };
 
         unsafe {

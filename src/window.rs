@@ -57,7 +57,7 @@ impl Window {
     }
 
     #[allow(unused)]
-    pub fn run_window_loop(mut self, world: &'static mut World) {
+    pub fn run_window_loop(mut self, world_instance: World) {
         let mut should_configure_swapchain = true;
         let mut rendering_controller = match self.rendering_controller {
             Some(rendering_controller) => rendering_controller,
@@ -67,15 +67,7 @@ impl Window {
             }
         };
 
-        // let entity_a = Entity::new();
-        // let entity_b = Entity::new();
-        // let mut scene = vec![entity_a, entity_b];
-
-        // scene[0].get_transform().set_position(0.5,0.2,0.);
-        // scene[1].get_transform().set_rotation(1.5);
-        // scene[1].get_transform().set_scale(3.);
-        // let mesh_a = &scene[0].get_component::<MeshRenderer>().unwrap().mesh;
-
+        let mut world= world_instance;
 
         rendering_controller.add_mesh_to_renderer(&create_primitive_quad());
 
@@ -85,7 +77,10 @@ impl Window {
             anim = start_time.elapsed().as_secs_f32().sin() * 0.5 + 0.5;
             match event {
                 Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::ExitWithCode(0),
+                    WindowEvent::CloseRequested => {
+                        println!("Requested shutdown!");
+                        *control_flow = ControlFlow::ExitWithCode(0);
+                    },
                     WindowEvent::Resized(dims) => {
                         self.physical_size = PhysicalSize::new(dims.width, dims.height);
                         should_configure_swapchain = true;
@@ -106,7 +101,7 @@ impl Window {
                    /* for entity in &mut scene {
                         entity.update()
                     }*/
-                    rendering_controller.render(world);
+                    rendering_controller.render(&mut world);
                 }
                 _ => (),
             }
