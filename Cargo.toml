@@ -13,6 +13,7 @@ shaderc = "0.8.0"
 image = "0.24.3"
 serde = {version = "1.0.144", features = ["derive"]}
 winit = "0.27.2"
+glm = "0.2.3"
 resa-ecs = {path = "../SkriptR/ecs", version = "0.1.0"}
 
 

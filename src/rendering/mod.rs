@@ -12,6 +12,7 @@ pub mod mesh;
 mod buffers;
 mod push_constants;
 pub mod mesh_renderer;
+mod camera_system;
 
 
 pub struct RenderingController {

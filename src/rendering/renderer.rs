@@ -18,9 +18,10 @@ use crate::rendering::commands::CommandBufferController;
 use crate::rendering::mesh::{Mesh, Vertex};
 use crate::rendering::pass::RenderPass;
 use crate::rendering::pipeline::GraphicsPipeline;
-use crate::rendering::push_constants;
+use crate::rendering::{camera_system, push_constants};
 use crate::rendering::push_constants::PushConstants;
 use resa_ecs::world::{EntityId, World};
+use crate::camera::Camera;
 use crate::rendering::mesh_renderer::MeshRenderer;
 use crate::transform::Transform;
 
@@ -253,24 +254,41 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 SubpassContents::Inline,
             );
 
-            let mesh_renderers = world.borrow_component_vec_mut::<MeshRenderer>().unwrap();
-            let transforms = world.borrow_component_vec_mut::<Transform>().unwrap();
 
+            let mut cameras = world.borrow_component_vec_mut::<Camera>().unwrap();
+            let mut mesh_renderers = world.borrow_component_vec_mut::<MeshRenderer>().unwrap();
+            let mut transforms = world.borrow_component_vec_mut::<Transform>().unwrap();
 
-            for (index, mesh_renderer) in mesh_renderers.iter().enumerate() {
-                let position = transforms[index].as_ref().unwrap().position;
+            let cameras_zip = cameras.iter_mut().zip(transforms.iter_mut());
+            let cameras_iter = cameras_zip.filter_map(|(camera, transform)| Some((camera.as_mut()?, transform.as_mut()?)));
 
-                let mesh_binder = &mesh_renderer.as_ref().unwrap();
+            let projection_mat = None,
+            let view_mat = None;
+            for (camera, transform) in cameras_iter {
+                let mvp = camera_system::get_camera_mvp_matrix(camera, transform);
+
+                break;
+            }
+
+            let meshes_zip = mesh_renderers.iter_mut().zip(transforms.iter_mut());
+            let meshes_iter = meshes_zip.filter_map(|(mesh_renderer, transform)| Some((mesh_renderer.as_mut()?, transform.as_mut()?)));
+
+            for (mesh_renderer, transform) in meshes_iter {
+                let position = transform.position;
+
                 let transform_matrix = Renderer::<B>::make_transform(position, 0.0, 1.0);
                 let push_constant = PushConstants {
-                    transform: transform_matrix,
-                    color: mesh_binder.color,
+                    projection:,
+                    view: ,
+                    model: transform_matrix,
+                    color: mesh_renderer.color,
                 };
 
-                let mesh = &mesh_binder.mesh;
+
+                let mesh = &mesh_renderer.mesh;
                 graphics_command_buffer.bind_vertex_buffers(0, iter::once((&*self.vertex_buffers[0].buffer, SubRange::WHOLE)));
 
-                let push_constant_bytes = push_constant.push_constant_bytes();
+                let push_constant_bytes = constants.push_constant_bytes();
 
                 graphics_command_buffer.push_graphics_constants(
                     &*self.graphics_pipelines[0].pipeline_layout,

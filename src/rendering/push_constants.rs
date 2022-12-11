@@ -3,7 +3,9 @@ use std::mem::size_of;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct PushConstants {
-    pub transform: [[f32; 4]; 4],
+    pub projection: [[f32;4];4],
+    pub view: [[f32;4]],
+    pub model: [[f32; 4]; 4],
     pub color: [f32; 4],
 }
 
