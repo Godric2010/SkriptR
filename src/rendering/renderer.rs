@@ -262,12 +262,18 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             let cameras_zip = cameras.iter_mut().zip(transforms.iter_mut());
             let cameras_iter = cameras_zip.filter_map(|(camera, transform)| Some((camera.as_mut()?, transform.as_mut()?)));
 
-            let projection_mat = None,
-            let view_mat = None;
+            let mut projection_mat = None;
+            let mut view_mat = None;
             for (camera, transform) in cameras_iter {
-                let mvp = camera_system::get_camera_mvp_matrix(camera, transform);
+
+                projection_mat = Some(camera_system::get_camera_projection_matrix(&camera));
+                view_mat = Some(camera_system::get_camera_view_matrix(&transform));
 
                 break;
+            }
+
+            if projection_mat.is_none() || view_mat.is_none(){
+                return;
             }
 
             let meshes_zip = mesh_renderers.iter_mut().zip(transforms.iter_mut());
@@ -278,8 +284,8 @@ impl<B: gfx_hal::Backend> Renderer<B> {
 
                 let transform_matrix = Renderer::<B>::make_transform(position, 0.0, 1.0);
                 let push_constant = PushConstants {
-                    projection:,
-                    view: ,
+                    projection: projection_mat.unwrap(),
+                    view: view_mat.unwrap(),
                     model: transform_matrix,
                     color: mesh_renderer.color,
                 };
@@ -288,7 +294,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 let mesh = &mesh_renderer.mesh;
                 graphics_command_buffer.bind_vertex_buffers(0, iter::once((&*self.vertex_buffers[0].buffer, SubRange::WHOLE)));
 
-                let push_constant_bytes = constants.push_constant_bytes();
+                let push_constant_bytes = push_constant.push_constant_bytes();
 
                 graphics_command_buffer.push_graphics_constants(
                     &*self.graphics_pipelines[0].pipeline_layout,
