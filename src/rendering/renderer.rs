@@ -179,11 +179,21 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         })
     }
 
-    pub fn recreate_swapchain(&mut self, new_surface_size: &PhysicalSize<u32>) {
+    pub fn recreate_swapchain(&mut self, new_surface_size: &PhysicalSize<u32>, world: &mut World) {
         self.surface_extent = Extent2D {
             width: new_surface_size.width,
             height: new_surface_size.height,
         };
+
+        let mut cameras = world.borrow_component_vec_mut::<Camera>().unwrap();
+        let cameras_zip = cameras.iter_mut();
+        let cameras_iter = cameras_zip.filter_map(|camera| Some(camera.as_mut()?));
+
+        let new_ratio = new_surface_size.width as f32 / new_surface_size.height as f32 ;
+        for camera in cameras_iter {
+           camera.ratio = new_ratio;
+        }
+
 
         let capabilities = self.surface.capabilities(&self.adapter.physical_device);
         let mut swapchain_config = SwapchainConfig::from_caps(&capabilities, self.render_passes[0].color_format, self.surface_extent);
@@ -226,7 +236,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             match self.surface.acquire_image(!0) {
                 Ok((image, _)) => image,
                 Err(_) => {
-                    self.recreate_swapchain(&size);
+                    self.recreate_swapchain(&size, world);
                     return;
                 }
             }
@@ -325,7 +335,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             );
 
             if result.is_err() {
-                self.recreate_swapchain(&size);
+                self.recreate_swapchain(&size, world);
             }
         }
     }

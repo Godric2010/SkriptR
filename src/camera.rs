@@ -13,7 +13,7 @@ impl Camera {
             range_min: range[0],
             range_max: range[1],
             is_perspective,
-            ratio: 4.0 / 3.0,
+            ratio: 16.0 / 9.0,
         }
     }
 }

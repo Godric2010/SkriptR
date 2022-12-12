@@ -95,7 +95,7 @@ impl Window {
                 Event::MainEventsCleared => self.instance.request_redraw(),
                 Event::RedrawRequested(_) => {
                     if should_configure_swapchain{
-                        rendering_controller.reconfigure_swapchain(&self.physical_size);
+                        rendering_controller.reconfigure_swapchain(&self.physical_size, &mut world);
                         should_configure_swapchain = false;
                     }
                    /* for entity in &mut scene {

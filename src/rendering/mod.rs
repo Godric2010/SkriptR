@@ -31,8 +31,8 @@ impl RenderingController {
         self.renderer_instance.register_mesh_vertex_buffer(mesh);
     }
 
-    pub fn reconfigure_swapchain(&mut self, surface_size: &PhysicalSize<u32>) {
-        self.renderer_instance.recreate_swapchain(surface_size);
+    pub fn reconfigure_swapchain(&mut self, surface_size: &PhysicalSize<u32>, world: &mut World) {
+        self.renderer_instance.recreate_swapchain(surface_size, world);
     }
 
     pub fn render(&mut self, world: &mut World) {
