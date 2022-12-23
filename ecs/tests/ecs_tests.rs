@@ -1,92 +1,79 @@
-
 #[cfg(test)]
-mod ecs_tests{
+mod ecs_tests {
     use resa_ecs::world::World;
 
-    struct Demo{val: i32}
+    struct Demo {
+        val: u32,
+    }
 
-    #[test]
-    fn create_entities(){
-
-        let mut world = World::new();
-        let entity01 = world.new_entity();
-        let entity02 = world.new_entity();
-
-        assert_eq!(entity01, 0);
-        assert_eq!(entity02, 1);
+    struct Demo2{
+        val: String,
     }
 
     #[test]
-    fn create_and_borrow_component(){
+    fn check_component_data() {
         let mut world = World::new();
-        let entity01 = world.new_entity();
+        let entity_a = world.new_entity();
+        let entity_b = world.new_entity();
 
-        let demo = Demo{val: 42};
+        let demo_a = Demo { val: 42 };
+        let demo_b = Demo { val: 24 };
 
-        world.add_component(entity01, demo);
-        // let borrowed_demo = world.borrow_component_from_entity::<Demo>(entity01).as_ref();
-        let borrowed_components = world.borrow_component_vec_mut::<Demo>().unwrap();
-        // assert!(borrowed_components.is_some());
-        let borrowed_demo = borrowed_components.iter().enumerate();
-        let mut d: Option<&Demo> = None;
-        for demo in borrowed_demo{
-            if demo.0 == entity01{
-                d = demo.1.as_ref()
-            }
-        }
+        world.add_component(&entity_a, demo_a);
+        world.add_component(&entity_b, demo_b);
 
-        assert!(d.is_some());
-        assert_eq!(d.unwrap().val, 42)
+        let received_demo_a = world.get_component::<Demo>(&entity_a).unwrap();
+        let received_demo_b = world.get_component::<Demo>(&entity_b).unwrap();
 
+        assert_eq!(received_demo_a.val, 42);
+        assert_eq!(received_demo_b.val, 24);
     }
 
     #[test]
-    fn remove_component(){
+    fn change_component_data() {
         let mut world = World::new();
-        let entity01 = world.new_entity();
+        let entity_a = world.new_entity();
+        let entity_b = world.new_entity();
 
-        let demo = Demo{val: 42};
+        let demo_a = Demo { val: 42 };
+        let demo_b = Demo { val: 24 };
 
-        world.add_component(entity01, demo);
-        world.remove_component::<Demo>(entity01);
+        world.add_component(&entity_a, demo_a);
+        world.add_component(&entity_b, demo_b);
 
-        let demo_vec = world.borrow_component_vec_mut::<Demo>().unwrap();
+        let mut received_demo_a = world.get_component_mut::<Demo>(&entity_a).unwrap();
 
-        let borrowed_demos = demo_vec.iter().enumerate();
-        for borrowed_demo in borrowed_demos{
-            if borrowed_demo.0 == entity01{
-                let demo = borrowed_demo.1.as_ref();
-                assert!(demo.is_none())
-            }
-        }
+        received_demo_a.val = 110;
 
+        let test_demo_a = world.get_component::<Demo>(&entity_a).unwrap();
+
+        assert_eq!(test_demo_a.val, 110);
     }
 
     #[test]
-    fn remove_entity(){
+    fn get_all_components_of_type(){
         let mut world = World::new();
-        let entity01 = world.new_entity();
-        let entity02 = world.new_entity();
+        let entity_a = world.new_entity();
+        let entity_b = world.new_entity();
+        let entity_c = world.new_entity();
 
-        let demo01 = Demo{val: 13};
-        let demo02 = Demo{val: 42};
+        let demo_a = Demo{val: 42};
+        let demo_b = Demo2{val: "Test01".to_string()};
+        let demo_c = Demo{val: 25};
+        let demo_c2 = Demo2{val: "Test02".to_string()};
 
-        world.add_component(entity01, demo01);
-        world.add_component(entity02, demo02);
+        world.add_component(&entity_a, demo_a);
+        world.add_component(&entity_b, demo_b);
+        world.add_component(&entity_c, demo_c);
+        world.add_component(&entity_c, demo_c2);
 
-        world.remove_entity(entity01);
+        let demo_result = world.get_all_components_of_type::<Demo>().unwrap();
+        let demo2_result = world.get_all_components_of_type::<Demo2>().unwrap();
 
-        let demo_vec = world.borrow_component_vec_mut::<Demo>().unwrap();
-        assert_eq!(demo_vec.len(), 2);
+        assert_eq!(demo_result.len(),2);
+        assert!(demo_result[0].val == 42 && demo_result[1].val == 25);
 
-        let borrowed_demos = demo_vec.iter().enumerate();
-        for borrowed_demo in borrowed_demos{
-            match borrowed_demo.0 {
-                0 => assert!(borrowed_demo.1.as_ref().is_none()),
-                1 => assert!(borrowed_demo.1.as_ref().is_some()),
-                _=> panic!()
-            }
-        }
+        assert_eq!(demo2_result.len(), 2);
+        assert!(demo2_result[0].val == "Test01".to_string() && demo2_result[1].val == "Test02".to_string());
     }
-
 }

@@ -1,67 +1,46 @@
-/*use bitset::BitSet;
+use std::collections::HashSet;
 
-pub struct Entity{
-    pub id: usize,
-    signature: Signature,
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct Entity(u64);
+
+/// Keeps track of entities in the world, as well as creates and destroys them.
+pub (crate) struct EntityGenerator{
+    next_id: u64,
+    dead_entities: HashSet<Entity>,
 }
 
-impl Entity {
-    pub fn new(id: usize) -> Self{
+impl EntityGenerator {
+
+    pub(crate) fn new() -> Self{
         Self{
-            id,
-            signature: Signature::new(),
-        }
-    }
-}
-
-pub struct Signature{
-    bit_set: BitSet,
-}
-
-impl Signature {
-    fn new() -> Self{ Signature{bit_set:BitSet::new()}}
-}
-
-pub struct EntityManager{
-   entities: Vec<Entity>,
-}
-
-
-impl EntityManager{
-    pub fn new() -> Self{
-        EntityManager{
-            entities: Vec::new(),
+            next_id: 0,
+            dead_entities: HashSet::new(),
         }
     }
 
-    pub fn create_entity(&mut self) -> &Entity{
-
-        let index = self.entities.len();
-        self.entities.push(Entity::new(index));
-        let entity = &self.entities.last().unwrap();
-        // self.entities_count += 1;
+    /// Create a new entity instance as long as less than u64::MAX entities have been created
+    pub(crate) fn spawn(&mut self) -> Entity{
+        let entity = Entity(self.next_id);
+        if self.next_id == u64::MAX{
+            panic!("Attempted to spawn an entity after running out of IDs");
+        }
+        self.next_id += 1;
         entity
     }
 
-    pub fn destroy_entity(&mut self, entity: Entity){
-        self.entities.remove(entity.id);
+    /// Add an entity to the dead entries if it is currently alive
+    pub(crate) fn desapwn(&mut self, entity: Entity){
+        if self.is_alive(entity){
+            self.dead_entities.insert(entity);
+        }
     }
 
-    pub fn set_signature(&mut self, entity: &Entity, signature: Signature){
-        let index = match self.entities.iter().position(|e| e.id == entity.id){
-            Some(index) => index,
-            None => {println!("Entity {} was not found! Cannot apply signature!", entity.id); return;}
-        };
-        self.entities[index].signature = signature;
+    /// Checks if an entity has been created and is currently in use
+    pub(crate) fn is_alive(&self, entity: Entity) -> bool{
 
+        if entity.0 >= self.next_id{
+            panic!("Attemted to use an entity that has not been spawned yet!");
+        }
+        self.dead_entities.contains(&entity) == false
     }
-
-    pub fn get_signature(&self, entity: &Entity) -> Option<&Signature>{
-        let index = self.entities.iter().position(|e| e.id == entity.id)?;
-
-        Some(&self.entities[index].signature)
-        None
-    }
-
-    // https://austinmorlan.com/posts/entity_component_system/#the-entity Use this as reference!
-}*/
+}
