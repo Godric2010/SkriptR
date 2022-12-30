@@ -160,6 +160,19 @@ impl Archetype {
         Some(references)
     }
 
+    pub(crate) fn get_components_mut<T: 'static>(&mut self) -> Option<Vec<(&mut T, Entity)>>{
+        let type_id = TypeId::of::<T>();
+        let slot = *self.component_type_map.get(&type_id)?;
+        let component_vec = self.component_collections[slot].as_any_mut().downcast_mut::<Vec<T>>()?;
+
+        let mut references = Vec::<(&mut T, Entity)>::new();
+        for (index, instance) in component_vec.iter_mut().enumerate() {
+            let entity = self.entities[index].clone();
+            references.push((instance, entity));
+        }
+        Some(references)
+    }
+
     pub(crate) fn has_component_type<T:'static>(&self) -> bool{
         let type_id = TypeId::of::<T>();
         match self.component_type_map.get(&type_id) {

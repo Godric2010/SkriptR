@@ -25,23 +25,23 @@ fn main() {
     let camera_entity = world.new_entity();
     let camera = Camera::new(45., [0.1,100.], true);
     let transform = Transform{ position: [0.0,0.0, 5.0]};
-    world.add_component(camera_entity, camera);
-    world.add_component(camera_entity, transform);
+    world.add_component(&camera_entity, camera);
+    world.add_component(&camera_entity, transform);
 
     let entity01 = world.new_entity();
 
     let transform = Transform { position: [0.0, 0.0, 0.0] };
     let mesh_renderer = MeshRenderer { mesh: create_primitive_quad(), color: [0.5, 0.0, 0.0, 1.0] };
 
-    world.add_component(entity01, transform);
-    world.add_component(entity01, mesh_renderer);
+    world.add_component(&entity01, transform);
+    world.add_component(&entity01, mesh_renderer);
 
 
     let entity02 = world.new_entity();
     let transform = Transform { position: [0.8, 0.2, 0.0] };
     let mesh_renderer = MeshRenderer { mesh: create_primitive_quad(), color: [0.0, 0.0, 1.0, 1.0] };
-    world.add_component(entity02, transform);
-    world.add_component(entity02, mesh_renderer);
+    world.add_component(&entity02, transform);
+    world.add_component(&entity02, mesh_renderer);
 
     let renderer = RenderingController::new(&window);
     /*    if renderer.is_none(){

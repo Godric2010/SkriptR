@@ -1,29 +1,32 @@
-use std::mem::{ManuallyDrop, size_of};
-use std::{iter, ptr};
-use std::borrow::Borrow;
+use crate::camera::Camera;
+use crate::rendering::buffers::Buffer;
+use crate::rendering::commands::CommandBufferController;
+use crate::rendering::mesh::{Mesh, Vertex};
+use crate::rendering::mesh_renderer::MeshRenderer;
+use crate::rendering::pass::RenderPass;
+use crate::rendering::pipeline::GraphicsPipeline;
+use crate::rendering::push_constants::PushConstants;
+use crate::rendering::{camera_system};
+use crate::transform::Transform;
 use backend::Backend;
 use gfx_hal::adapter::{Adapter, PhysicalDevice};
 use gfx_hal::buffer::{SubRange, Usage};
-use gfx_hal::command::{ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, RenderAttachmentInfo, SubpassContents};
+use gfx_hal::command::{
+    ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, RenderAttachmentInfo,
+    SubpassContents,
+};
 use gfx_hal::device::Device;
 use gfx_hal::image::Extent;
-use gfx_hal::{Instance, MemoryTypeId};
 use gfx_hal::memory::{Properties, Segment, SparseFlags};
 use gfx_hal::pso::{Rect, ShaderStageFlags, Viewport};
 use gfx_hal::queue::{Queue, QueueFamily, QueueGroup};
 use gfx_hal::window::{Extent2D, PresentationSurface, Surface, SwapchainConfig};
+use gfx_hal::{Instance, MemoryTypeId};
+use resa_ecs::world::World;
+use std::borrow::Borrow;
+use std::mem::{size_of, ManuallyDrop};
+use std::{iter, ptr};
 use winit::dpi::PhysicalSize;
-use crate::rendering::buffers::Buffer;
-use crate::rendering::commands::CommandBufferController;
-use crate::rendering::mesh::{Mesh, Vertex};
-use crate::rendering::pass::RenderPass;
-use crate::rendering::pipeline::GraphicsPipeline;
-use crate::rendering::{camera_system, push_constants};
-use crate::rendering::push_constants::PushConstants;
-use resa_ecs::world::{EntityId, World};
-use crate::camera::Camera;
-use crate::rendering::mesh_renderer::MeshRenderer;
-use crate::transform::Transform;
 
 pub struct Renderer<B: gfx_hal::Backend> {
     instance: ManuallyDrop<B::Instance>,
@@ -42,10 +45,12 @@ pub struct Renderer<B: gfx_hal::Backend> {
     vertex_buffers: Vec<Buffer<B>>,
 }
 
-
 impl<B: gfx_hal::Backend> Renderer<B> {
-    pub fn new(name: &str, surface_size: &PhysicalSize<u32>, window: &winit::window::Window) -> Option<Self> {
-
+    pub fn new(
+        name: &str,
+        surface_size: &PhysicalSize<u32>,
+        window: &winit::window::Window,
+    ) -> Option<Self> {
         // Create the backend instance
         let instance_result = Instance::create(name, 1);
         if instance_result.is_err() {
@@ -80,7 +85,9 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         let queue_family = queue_family_result.unwrap();
 
         let gpu_result = unsafe {
-            adapter.physical_device.open(&[(queue_family, &[1.0])], gfx_hal::Features::empty())
+            adapter
+                .physical_device
+                .open(&[(queue_family, &[1.0])], gfx_hal::Features::empty())
         };
 
         if gpu_result.is_err() {
@@ -98,7 +105,8 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         let queue_group = queue_group_result.unwrap();
 
         // create command buffer pool and alloc commands
-        let command_buffer_controller_result = CommandBufferController::new(&device, queue_group.family, 1);
+        let command_buffer_controller_result =
+            CommandBufferController::new(&device, queue_group.family, 1);
         if command_buffer_controller_result.is_none() {
             println!("Failed to create command pool!");
             return None;
@@ -121,7 +129,6 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         }
         let graphics_pipeline = pipeline_result.unwrap();
 
-
         let submission_complete_fence_result = device.create_fence(true);
         if submission_complete_fence_result.is_err() {
             println!("Failed to create fence! Out of memory!");
@@ -136,17 +143,23 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         }
         let rendering_complete_semaphore = rendering_complete_semaphore_result.unwrap();
 
-
         let caps = surface.capabilities(&adapter.physical_device);
-        let swap_config = SwapchainConfig::from_caps(&caps, render_pass.color_format, surface_extent);
+        let swap_config =
+            SwapchainConfig::from_caps(&caps, render_pass.color_format, surface_extent);
         let fat = swap_config.framebuffer_attachment();
 
         let framebuffer = ManuallyDrop::new(unsafe {
-            device.create_framebuffer(&*render_pass.pass, iter::once(fat), Extent {
-                width: surface_extent.width,
-                height: surface_extent.height,
-                depth: 1,
-            }).unwrap()
+            device
+                .create_framebuffer(
+                    &*render_pass.pass,
+                    iter::once(fat),
+                    Extent {
+                        width: surface_extent.width,
+                        height: surface_extent.height,
+                        depth: 1,
+                    },
+                )
+                .unwrap()
         });
 
         let viewport = Viewport {
@@ -185,18 +198,19 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             height: new_surface_size.height,
         };
 
-        let mut cameras = world.borrow_component_vec_mut::<Camera>().unwrap();
-        let cameras_zip = cameras.iter_mut();
-        let cameras_iter = cameras_zip.filter_map(|camera| Some(camera.as_mut()?));
+        let mut cameras = world.get_all_components_of_type_mut::<Camera>().unwrap();
 
-        let new_ratio = new_surface_size.width as f32 / new_surface_size.height as f32 ;
-        for camera in cameras_iter {
-           camera.ratio = new_ratio;
+        let new_ratio = new_surface_size.width as f32 / new_surface_size.height as f32;
+        for (camera, _) in cameras.iter_mut() {
+            camera.ratio = new_ratio;
         }
 
-
         let capabilities = self.surface.capabilities(&self.adapter.physical_device);
-        let mut swapchain_config = SwapchainConfig::from_caps(&capabilities, self.render_passes[0].color_format, self.surface_extent);
+        let mut swapchain_config = SwapchainConfig::from_caps(
+            &capabilities,
+            self.render_passes[0].color_format,
+            self.surface_extent,
+        );
 
         // Fixes some fullscreen slowdowns on macOS
         if capabilities.image_count.contains(&3) {
@@ -210,17 +224,26 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         unsafe {
             self.device.wait_idle().unwrap();
 
-            self.device.destroy_framebuffer(ManuallyDrop::into_inner(ptr::read(&self.framebuffer)));
-
+            self.device
+                .destroy_framebuffer(ManuallyDrop::into_inner(ptr::read(&self.framebuffer)));
 
             let graphics_render_pass = &self.render_passes[0].pass;
 
-            let framebuffer =
-                self.device.create_framebuffer(&graphics_render_pass, iter::once(swapchain_config.framebuffer_attachment()), swap_extent).unwrap();
+            let framebuffer = self
+                .device
+                .create_framebuffer(
+                    &graphics_render_pass,
+                    iter::once(swapchain_config.framebuffer_attachment()),
+                    swap_extent,
+                )
+                .unwrap();
             self.framebuffer = ManuallyDrop::new(framebuffer);
         }
 
-        let res = unsafe { self.surface.configure_swapchain(&self.device, swapchain_config) };
+        let res = unsafe {
+            self.surface
+                .configure_swapchain(&self.device, swapchain_config)
+        };
         if res.is_err() {
             println!("Failed to recreate swapchain!")
         }
@@ -264,45 +287,30 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 SubpassContents::Inline,
             );
 
+            let (camera, cam_entity) = world.get_all_components_of_type::<Camera>().unwrap()[0];
+            let camera_transfrom = world.get_component::<Transform>(&cam_entity).unwrap();
+            let projection_mat = camera_system::get_camera_projection_matrix(&camera);
+            let view_mat = camera_system::get_camera_view_matrix(&camera_transfrom);
 
-            let mut cameras = world.borrow_component_vec_mut::<Camera>().unwrap();
-            let mut mesh_renderers = world.borrow_component_vec_mut::<MeshRenderer>().unwrap();
-            let mut transforms = world.borrow_component_vec_mut::<Transform>().unwrap();
+            let mesh_renderers = world.get_all_components_of_type::<MeshRenderer>().unwrap();
 
-            let cameras_zip = cameras.iter_mut().zip(transforms.iter_mut());
-            let cameras_iter = cameras_zip.filter_map(|(camera, transform)| Some((camera.as_mut()?, transform.as_mut()?)));
-
-            let mut projection_mat = None;
-            let mut view_mat = None;
-            for (camera, transform) in cameras_iter {
-
-                projection_mat = Some(camera_system::get_camera_projection_matrix(&camera));
-                view_mat = Some(camera_system::get_camera_view_matrix(&transform));
-
-                break;
-            }
-
-            if projection_mat.is_none() || view_mat.is_none(){
-                return;
-            }
-
-            let meshes_zip = mesh_renderers.iter_mut().zip(transforms.iter_mut());
-            let meshes_iter = meshes_zip.filter_map(|(mesh_renderer, transform)| Some((mesh_renderer.as_mut()?, transform.as_mut()?)));
-
-            for (mesh_renderer, transform) in meshes_iter {
+            for (mesh_renderer, entity) in mesh_renderers.iter() {
+                let transform = world.get_component::<Transform>(&entity).unwrap();
                 let position = transform.position;
 
                 let transform_matrix = Renderer::<B>::make_transform(position, 0.0, 1.0);
                 let push_constant = PushConstants {
-                    projection: projection_mat.unwrap(),
-                    view: view_mat.unwrap(),
+                    projection: projection_mat,
+                    view: view_mat,
                     model: transform_matrix,
                     color: mesh_renderer.color,
                 };
 
-
                 let mesh = &mesh_renderer.mesh;
-                graphics_command_buffer.bind_vertex_buffers(0, iter::once((&*self.vertex_buffers[0].buffer, SubRange::WHOLE)));
+                graphics_command_buffer.bind_vertex_buffers(
+                    0,
+                    iter::once((&*self.vertex_buffers[0].buffer, SubRange::WHOLE)),
+                );
 
                 let push_constant_bytes = push_constant.push_constant_bytes();
 
@@ -360,10 +368,15 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         ]
     }
 
-
     pub fn register_mesh_vertex_buffer(&mut self, mesh: &Mesh) {
         let vertex_buffer_length = mesh.vertices.len() * std::mem::size_of::<Vertex>();
-        let mut buffer: Buffer<B> = match Buffer::new(&*self.device, &self.adapter.physical_device, vertex_buffer_length, Usage::VERTEX, Properties::CPU_VISIBLE) {
+        let mut buffer: Buffer<B> = match Buffer::new(
+            &*self.device,
+            &self.adapter.physical_device,
+            vertex_buffer_length,
+            Usage::VERTEX,
+            Properties::CPU_VISIBLE,
+        ) {
             Some(buffer) => buffer,
             None => {
                 println!("buffer registration failed!");
@@ -372,9 +385,19 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         };
 
         unsafe {
-            let mapped_memory = self.device.map_memory(&mut *buffer.buffer_memory, Segment::ALL).expect("Failed to map memory!");
-            std::ptr::copy_nonoverlapping(mesh.vertices.as_ptr() as *const u8, mapped_memory, vertex_buffer_length);
-            let result = self.device.flush_mapped_memory_ranges(iter::once((&*buffer.buffer_memory, Segment::ALL))).expect("out of memory");
+            let mapped_memory = self
+                .device
+                .map_memory(&mut *buffer.buffer_memory, Segment::ALL)
+                .expect("Failed to map memory!");
+            std::ptr::copy_nonoverlapping(
+                mesh.vertices.as_ptr() as *const u8,
+                mapped_memory,
+                vertex_buffer_length,
+            );
+            let result = self
+                .device
+                .flush_mapped_memory_ranges(iter::once((&*buffer.buffer_memory, Segment::ALL)))
+                .expect("out of memory");
             self.device.unmap_memory(&mut *buffer.buffer_memory);
         }
         self.vertex_buffers.push(buffer);
@@ -389,7 +412,8 @@ impl<B: gfx_hal::Backend> Drop for Renderer<B> {
                 vertex_buffer.release(&self.device);
             }
 
-            let rendering_complete_semaphore = ManuallyDrop::take(&mut self.rendering_complete_semaphore);
+            let rendering_complete_semaphore =
+                ManuallyDrop::take(&mut self.rendering_complete_semaphore);
             self.device.destroy_semaphore(rendering_complete_semaphore);
 
             let submission_complete_fence = ManuallyDrop::take(&mut self.submission_complete_fence);

@@ -120,7 +120,25 @@ impl World {
         }
 
         Some(all_instances)
+    }
 
+    pub fn get_all_components_of_type_mut<ComponentType: 'static>(&mut self) -> Option<Vec<(&mut ComponentType, Entity)>>{
+        let mut all_instances = Vec::<(&mut ComponentType, Entity)>::new();
+        for archetype in self.archetypes.iter_mut() {
+            if !archetype.has_component_type::<ComponentType>(){
+                continue
+            }
+
+            for (instance, entity) in archetype.get_components_mut::<ComponentType>()?{
+                all_instances.push((instance, entity));
+            }
+        }
+
+        if all_instances.len() == 0{
+            return None;
+        }
+
+        Some(all_instances)
     }
 
     /* pub fn remove_entity(&mut self, entity: Entity){
