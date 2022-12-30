@@ -99,10 +99,16 @@ impl Archetype {
     }
 
     pub fn remove_entity(&mut self, entity: &Entity) {
-        match self.entities.iter().position(|e| e == entity) {
-            Some(index) => self.entities.remove(index),
+        let entity_index = match self.entities.iter().position(|e| e == entity) {
+            Some(index) => index,
             None => return,
         };
+        self.entities.remove(entity_index);
+
+        for component_type in self.component_collections.iter_mut(){
+            component_type.remove_at(entity_index);
+        }
+
     }
 
     pub(crate) fn set_component_instance<T: 'static>(&mut self, component_instance: T){
@@ -141,14 +147,15 @@ impl Archetype {
         Some(component_instance_mut)
     }
 
-    pub(crate) fn get_components<T: 'static>(&self) -> Option<Vec<&T>>{
+    pub(crate) fn get_components<T: 'static>(&self) -> Option<Vec<(&T, Entity)>>{
         let type_id = TypeId::of::<T>();
         let slot = *self.component_type_map.get(&type_id)?;
         let component_vec = self.component_collections[slot].as_any().downcast_ref::<Vec<T>>()?;
 
-        let mut references = Vec::<&T>::new();
-        for instance in component_vec.iter() {
-            references.push(instance);
+        let mut references = Vec::<(&T, Entity)>::new();
+        for (index, instance) in component_vec.iter().enumerate() {
+            let entity = self.entities[index].clone();
+            references.push((instance, entity));
         }
         Some(references)
     }
@@ -162,13 +169,14 @@ impl Archetype {
     }
 
     pub fn migrate_entity_from(&mut self, from: &mut Archetype, entity: &Entity) {
-        let old_entity_index = match from.entities.iter().position(|e| e == entity) {
-            Some(idx) => idx,
-            None => panic!("Entity not found!"),
-        };
 
-        from.entities.remove(old_entity_index);
+        let entity_index = from.entities.iter().position(|e| e == entity).unwrap();
 
+        for (index, component_collections) in from.component_collections.iter_mut().enumerate(){
+            component_collections.migrate(entity_index, &mut *self.component_collections[index] )
+        }
+
+        from.entities.remove(entity_index);
         self.entities.push(*entity);
     }
 
@@ -182,6 +190,7 @@ impl Archetype {
 pub struct ColumnsBuilder(Vec<Box<dyn ComponentInstanceCollection>>, Vec<TypeId>);
 
 impl ColumnsBuilder {
+    #[allow(dead_code)]
     pub fn with_column_type<T: 'static>(mut self) -> Self {
         if let Some(_) = self.0.iter().find(|col| col.as_any().type_id() == TypeId::of::<Vec<T>>()) {
             panic!("Attempted to create an invalid archetype");

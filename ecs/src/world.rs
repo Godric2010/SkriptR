@@ -102,16 +102,16 @@ impl World {
         Some(component_instance)
     }
 
-    pub fn get_all_components_of_type<ComponentType: 'static>(&self) -> Option<Vec<&ComponentType>>{
+    pub fn get_all_components_of_type<ComponentType: 'static>(&self) -> Option<Vec<(&ComponentType, Entity)>>{
 
-        let mut all_instances = Vec::<&ComponentType>::new();
+        let mut all_instances = Vec::<(&ComponentType, Entity)>::new();
         for archetype in self.archetypes.iter() {
             if !archetype.has_component_type::<ComponentType>(){
                 continue
             }
 
-            for instance in archetype.get_components::<ComponentType>()?{
-                all_instances.push(instance);
+            for (instance, entity) in archetype.get_components::<ComponentType>()?{
+                all_instances.push((instance, entity));
             }
         }
 
