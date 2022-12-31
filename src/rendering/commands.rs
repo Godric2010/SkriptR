@@ -10,7 +10,7 @@ pub struct CommandBufferController<B: gfx_hal::Backend> {
 }
 
 impl<B: gfx_hal::Backend> CommandBufferController<B> {
-    pub fn new(device: &B::Device, queue_family: QueueFamilyId, size: u32) -> Option<Self> {
+    pub fn new(device: &B::Device, queue_family: QueueFamilyId, _size: u32) -> Option<Self> {
         let command_pool_result = unsafe { device.create_command_pool(queue_family, CommandPoolCreateFlags::empty()) };
         if command_pool_result.is_err() {
             println!("Failed to create command pool. Out of memory!");

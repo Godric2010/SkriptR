@@ -6,6 +6,7 @@ pub struct MeshRenderer {
 }
 
 impl MeshRenderer {
+    #[allow(dead_code)]
     pub fn new(mesh: Mesh, color: [f32; 4]) -> Self {
         Self {
             mesh,

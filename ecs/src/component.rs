@@ -1,5 +1,4 @@
 use std::any::{Any};
-use std::ops::Index;
 
 pub(crate) trait ComponentInstanceCollection: Any{
     fn as_any(&self) -> &dyn Any;

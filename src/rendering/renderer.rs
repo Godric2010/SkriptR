@@ -8,7 +8,6 @@ use crate::rendering::pipeline::GraphicsPipeline;
 use crate::rendering::push_constants::PushConstants;
 use crate::rendering::{camera_system};
 use crate::transform::Transform;
-use backend::Backend;
 use gfx_hal::adapter::{Adapter, PhysicalDevice};
 use gfx_hal::buffer::{SubRange, Usage};
 use gfx_hal::command::{
@@ -17,14 +16,14 @@ use gfx_hal::command::{
 };
 use gfx_hal::device::Device;
 use gfx_hal::image::Extent;
-use gfx_hal::memory::{Properties, Segment, SparseFlags};
-use gfx_hal::pso::{Rect, ShaderStageFlags, Viewport};
+use gfx_hal::memory::{Properties, Segment};
+use gfx_hal::pso::{Rect, ShaderStageFlags, Viewport,};
 use gfx_hal::queue::{Queue, QueueFamily, QueueGroup};
 use gfx_hal::window::{Extent2D, PresentationSurface, Surface, SwapchainConfig};
-use gfx_hal::{Instance, MemoryTypeId};
+use gfx_hal::{Instance};
 use resa_ecs::world::World;
 use std::borrow::Borrow;
-use std::mem::{size_of, ManuallyDrop};
+use std::mem::{ManuallyDrop};
 use std::{iter, ptr};
 use winit::dpi::PhysicalSize;
 
@@ -43,6 +42,8 @@ pub struct Renderer<B: gfx_hal::Backend> {
     framebuffer: ManuallyDrop<B::Framebuffer>,
     viewport: Viewport,
     vertex_buffers: Vec<Buffer<B>>,
+    // uniform_desc_pool: ManuallyDrop<B::DescriptorPool>,
+    // uniform: gfx_hal::pso::BufferDescriptorType,
 }
 
 impl<B: gfx_hal::Backend> Renderer<B> {
@@ -288,13 +289,15 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             );
 
             let (camera, cam_entity) = world.get_all_components_of_type::<Camera>().unwrap()[0];
-            let camera_transfrom = world.get_component::<Transform>(&cam_entity).unwrap();
+            let camera_transform = world.get_component::<Transform>(&cam_entity).unwrap();
             let projection_mat = camera_system::get_camera_projection_matrix(&camera);
-            let view_mat = camera_system::get_camera_view_matrix(&camera_transfrom);
+            let view_mat = camera_system::get_camera_view_matrix(&camera_transform);
 
             let mesh_renderers = world.get_all_components_of_type::<MeshRenderer>().unwrap();
 
             for (mesh_renderer, entity) in mesh_renderers.iter() {
+
+                // Transform shnizzle
                 let transform = world.get_component::<Transform>(&entity).unwrap();
                 let position = transform.position;
 
@@ -306,6 +309,8 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                     color: mesh_renderer.color,
                 };
 
+
+                // Actual data binding for rendering
                 let mesh = &mesh_renderer.mesh;
                 graphics_command_buffer.bind_vertex_buffers(
                     0,
@@ -320,6 +325,16 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                     0,
                     push_constant_bytes,
                 );
+
+
+                // graphics_command_buffer.bind_graphics_descriptor_sets(
+                //     &*self.graphics_pipelines[0].pipeline_layout,
+                //     0,
+                //     // vec![].into_iter(),
+                //     iter::empty(),
+                //     iter::empty()
+                // );
+
                 let vertex_count = mesh.vertices.len() as u32;
                 graphics_command_buffer.draw(0..vertex_count, 0..1);
             }
@@ -389,12 +404,12 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 .device
                 .map_memory(&mut *buffer.buffer_memory, Segment::ALL)
                 .expect("Failed to map memory!");
-            std::ptr::copy_nonoverlapping(
+            ptr::copy_nonoverlapping(
                 mesh.vertices.as_ptr() as *const u8,
                 mapped_memory,
                 vertex_buffer_length,
             );
-            let result = self
+            let _ = self
                 .device
                 .flush_mapped_memory_ranges(iter::once((&*buffer.buffer_memory, Segment::ALL)))
                 .expect("out of memory");
