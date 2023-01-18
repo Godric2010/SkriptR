@@ -2,6 +2,7 @@ extern crate core;
 
 
 use resa_ecs::world::World;
+use resa_renderer::ResaRenderer;
 use crate::camera::Camera;
 use crate::rendering::mesh::create_primitive_quad;
 use crate::rendering::mesh_renderer::MeshRenderer;
@@ -43,13 +44,14 @@ fn main() {
     world.add_component(&entity02, transform);
     world.add_component(&entity02, mesh_renderer);
 
-    let renderer = RenderingController::new(&window);
+    // let renderer = RenderingController::new(&window);
+    let resa_renderer = ResaRenderer::new(&window.instance, &window.physical_size);
     /*    if renderer.is_none(){
             println!("Creating renderer failed!");
             return;
         }*/
 
-    window.set_renderer_instance(renderer);
-    println!("Start rendering!");
-    window.run_window_loop(world);
+    // window.set_renderer_instance(renderer);
+    // println!("Start rendering!");
+    // window.run_window_loop(world);
 }
