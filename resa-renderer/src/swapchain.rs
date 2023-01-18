@@ -17,7 +17,7 @@ pub struct Swapchain {
 impl Swapchain {
     pub fn new<B: Backend>(surface: &mut B::Surface, core_device: &CoreDevice<B>, dimensions: Extent2D) -> Self {
         let capabilities = surface.capabilities(&core_device.physical_device);
-        let formats = surface.supported_formats((&core_device.physical_device));
+        let formats = surface.supported_formats(&core_device.physical_device);
 
         let format = formats.map_or(Format::Rgba8Srgb, |formats| {
             formats

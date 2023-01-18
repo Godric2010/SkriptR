@@ -1,5 +1,5 @@
 use winit::dpi::PhysicalSize;
-use winit::window::{Window, WindowBuilder};
+use winit::window::{Window};
 use crate::renderer::Renderer;
 
 mod renderer;
