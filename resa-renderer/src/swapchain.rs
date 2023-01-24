@@ -7,11 +7,11 @@ use gfx_hal::window::{Extent2D, SwapchainConfig};
 use crate::core::CoreDevice;
 
 pub struct Swapchain {
-    extent: Extent,
-    format: Format,
-    frame_index: u32,
-    frame_queue_size: u32,
-    framebuffer_attachment: FramebufferAttachment,
+    pub extent: Extent,
+    pub format: Format,
+    pub frame_index: u32,
+    pub frame_queue_size: u32,
+    pub framebuffer_attachment: FramebufferAttachment,
 }
 
 impl Swapchain {

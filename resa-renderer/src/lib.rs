@@ -6,6 +6,9 @@ mod renderer;
 mod core;
 mod framebuffer;
 mod swapchain;
+mod renderpass;
+mod graphics_pipeline;
+mod vertex;
 
 pub struct ResaRenderer{
     renderer: Renderer<backend::Backend>
