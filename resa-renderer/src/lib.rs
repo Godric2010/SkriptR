@@ -9,6 +9,8 @@ mod swapchain;
 mod renderpass;
 mod graphics_pipeline;
 mod vertex;
+mod buffer;
+mod descriptors;
 
 pub struct ResaRenderer{
     renderer: Renderer<backend::Backend>
