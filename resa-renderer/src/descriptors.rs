@@ -12,9 +12,9 @@ pub struct DescSet<B: Backend> {
 }
 
 pub struct DescSetWrite<W>{
-	binding: DescriptorBinding,
-	array_offset: DescriptorArrayIndex,
-	descriptors: W,
+	pub binding: DescriptorBinding,
+	pub array_offset: DescriptorArrayIndex,
+	pub descriptors: W,
 }
 
 pub struct DescSetLayout<B: Backend>{

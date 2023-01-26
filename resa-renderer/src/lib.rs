@@ -11,6 +11,7 @@ mod graphics_pipeline;
 mod vertex;
 mod buffer;
 mod descriptors;
+mod uniform;
 
 pub struct ResaRenderer{
     renderer: Renderer<backend::Backend>
