@@ -7,8 +7,8 @@ use gfx_hal::pso::{Descriptor, DescriptorArrayIndex, DescriptorBinding, Descript
 use crate::core::CoreDevice;
 
 pub struct DescSet<B: Backend> {
-	set: Option<B::DescriptorSet>,
-	layout: DescSetLayout<B>,
+	pub set: Option<B::DescriptorSet>,
+	pub layout: DescSetLayout<B>,
 }
 
 pub struct DescSetWrite<W>{
@@ -19,7 +19,7 @@ pub struct DescSetWrite<W>{
 
 pub struct DescSetLayout<B: Backend>{
 	layout: Option<B::DescriptorSetLayout>,
-	device: Rc<RefCell<CoreDevice<B>>>
+	pub device: Rc<RefCell<CoreDevice<B>>>
 }
 
 impl<B: Backend> DescSet<B> {

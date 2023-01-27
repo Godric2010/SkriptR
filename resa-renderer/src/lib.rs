@@ -12,6 +12,7 @@ mod vertex;
 mod buffer;
 mod descriptors;
 mod uniform;
+mod image_buffer;
 
 pub struct ResaRenderer{
     renderer: Renderer<backend::Backend>
