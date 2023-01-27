@@ -11,7 +11,7 @@ use crate::descriptors::{DescSet, DescSetWrite};
 
 pub struct Uniform<B: Backend> {
 	buffer: Option<Buffer<B>>,
-	desc: Option<DescSet<B>>,
+	pub desc: Option<DescSet<B>>,
 }
 
 impl<B: Backend> Uniform<B> {

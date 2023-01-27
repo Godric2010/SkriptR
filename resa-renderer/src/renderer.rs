@@ -2,10 +2,14 @@ use std::cell::RefCell;
 use std::iter;
 use std::rc::Rc;
 use gfx_hal::Backend;
-use gfx_hal::buffer::Usage;
+use gfx_hal::buffer::{SubRange, Usage};
+use gfx_hal::command::{ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
 use gfx_hal::device::Device;
-use gfx_hal::prelude::DescriptorPool;
+use gfx_hal::pool::CommandPool;
+use gfx_hal::prelude::{DescriptorPool, PresentationSurface};
 use gfx_hal::pso::{BufferDescriptorFormat, BufferDescriptorType, ColorValue, DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ShaderStageFlags, Viewport};
+use gfx_hal::pso::LogicOp::Clear;
+use gfx_hal::queue::Queue;
 use gfx_hal::window::Extent2D;
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
@@ -157,5 +161,87 @@ impl<B: Backend> Renderer<B> {
 		self.viewport = self.swapchain.make_viewport();
 	}
 
+	pub fn draw(&mut self){
+		if self.recreate_swapchain{
+			self.recreate_swapchain(Extent2D{width: self.swapchain.extent.width, height: self.swapchain.extent.height});
+			self.recreate_swapchain = false;
+		}
 
+		let surface_image = match unsafe{self.core.surface.acquire_image(!0)} {
+			Ok((image, _)) => image,
+			Err(_) => {
+				self.recreate_swapchain = true;
+				return;
+			}
+		};
+
+		let frame_index = (self.swapchain.frame_index % self.swapchain.frame_queue_size) as usize;
+		self.swapchain.frame_index += 1;
+
+		let (framebuffer, command_pool, command_buffers, sem_image_presentation) = self.framebuffer_data.get_frame_data(frame_index);
+
+		unsafe {
+			let (mut cmd_buffer, mut fence) = match command_buffers.pop() {
+				Some((cmd_buffer, fence)) => (cmd_buffer, fence),
+				None => (
+					command_pool.allocate_one(Level::Primary),
+					self.device.borrow().device.create_fence(true).unwrap(),
+					),
+			};
+
+			self.device.borrow().device.wait_for_fence(&mut fence, u64::MAX).unwrap();
+			self.device.borrow().device.reset_fence(&mut fence).unwrap();
+
+			command_pool.reset(false);
+
+			cmd_buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
+			cmd_buffer.set_viewports(0, iter::once(self.viewport.clone()));
+			cmd_buffer.set_scissors(0, iter::once(self.viewport.rect));
+			cmd_buffer.bind_graphics_pipeline(self.pipeline.pipeline.as_ref().unwrap());
+			cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffer.get(), SubRange::WHOLE)),);
+			cmd_buffer.bind_graphics_descriptor_sets(self.pipeline.pipeline_layout.as_ref().unwrap(),
+			0,
+			vec![
+				self.uniform.desc.as_ref().unwrap().set.as_ref().unwrap(),
+			].into_iter(),
+			iter::empty()
+			);
+
+			cmd_buffer.begin_render_pass(
+				self.render_pass.render_pass.as_ref().unwrap(),
+				framebuffer,
+				self.viewport.rect,
+				iter::once(RenderAttachmentInfo{
+					image_view: std::borrow::Borrow::borrow(&surface_image),
+					clear_value: ClearValue{
+						color: ClearColor{
+							float32:self.bg_color,
+						}
+					}
+				}),
+				SubpassContents::Inline,
+			);
+
+			cmd_buffer.draw(0..3, 0..1);
+			cmd_buffer.end_render_pass();
+			cmd_buffer.finish();
+
+			self.device.borrow_mut().queues.queues[0].submit(
+				iter::once(&cmd_buffer),
+				iter::empty(),
+				iter::once(&*sem_image_presentation),
+				Some(&mut fence),
+			);
+			command_buffers.push((cmd_buffer, fence));
+
+			// present frame
+			if let Err(_) = self.device.borrow_mut().queues.queues[0].present(
+				&mut *self.core.surface,
+				surface_image,
+				Some(sem_image_presentation),
+			){
+				self.recreate_swapchain = true;
+			}
+		}
+	}
 }
