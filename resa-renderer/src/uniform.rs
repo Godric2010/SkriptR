@@ -34,4 +34,8 @@ impl<B: Backend> Uniform<B> {
 			desc: Some(desc),
 		}
 	}
+
+	pub fn get_layout(&self) -> &B::DescriptorSetLayout{
+		self.desc.as_ref().unwrap().get_layout()
+	}
 }

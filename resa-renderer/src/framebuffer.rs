@@ -6,7 +6,7 @@ use gfx_hal::pool::{CommandPool, CommandPoolCreateFlags};
 use crate::core::CoreDevice;
 
 pub struct FramebufferData<B: Backend> {
-    framebuffer: Option<B::Framebuffer>,
+    pub framebuffer: Option<B::Framebuffer>,
     command_pools: Option<Vec<B::CommandPool>>,
     command_buffer_lists: Vec<Vec<(B::CommandBuffer, B::Fence)>>,
     present_semaphores: Option<Vec<B::Semaphore>>,
