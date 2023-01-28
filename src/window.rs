@@ -3,8 +3,7 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use resa_ecs::world::World;
-use crate::rendering::mesh::create_primitive_quad;
-use crate::rendering::RenderingController;
+use resa_renderer::ResaRenderer;
 
 #[allow(dead_code)]
 pub struct Window {
@@ -13,7 +12,7 @@ pub struct Window {
     pub physical_size: PhysicalSize<u32>,
     pub event_loop: EventLoop<()>,
     pub instance: winit::window::Window,
-    rendering_controller: Option<RenderingController>,
+    rendering_controller: Option<ResaRenderer>,
 }
 
 impl Window {
@@ -52,7 +51,7 @@ impl Window {
         })
     }
 
-    pub fn set_renderer_instance(&mut self, renderer: RenderingController) {
+    pub fn set_renderer_instance(&mut self, renderer: resa_renderer::ResaRenderer) {
         self.rendering_controller = Some(renderer);
     }
 
@@ -69,7 +68,7 @@ impl Window {
 
         let mut world= world_instance;
 
-        rendering_controller.add_mesh_to_renderer(&create_primitive_quad());
+        // rendering_controller.add_mesh_to_renderer(&create_primitive_quad());
 
         let start_time = std::time::Instant::now();
         let mut anim = 0.0;
@@ -95,13 +94,14 @@ impl Window {
                 Event::MainEventsCleared => self.instance.request_redraw(),
                 Event::RedrawRequested(_) => {
                     if should_configure_swapchain{
-                        rendering_controller.reconfigure_swapchain(&self.physical_size, &mut world);
+                        // rendering_controller.reconfigure_swapchain(&self.physical_size, &mut world);
+                        rendering_controller.refresh();
                         should_configure_swapchain = false;
                     }
                    /* for entity in &mut scene {
                         entity.update()
                     }*/
-                    rendering_controller.render(&mut world);
+                    rendering_controller.render(/*&mut world*/);
                 }
                 _ => (),
             }

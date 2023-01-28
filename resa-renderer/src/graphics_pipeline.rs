@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::{fs, iter};
 use std::mem::size_of;
+use std::path::Path;
 use std::rc::Rc;
 use gfx_hal::{Backend, spec_const_list};
 use gfx_hal::device::Device;
@@ -145,10 +146,15 @@ impl<B: Backend> Drop for GraphicsPipeline<B> {
 }
 
 
-fn create_shader(shader_path: &str, shader_type: glsl_to_spirv::ShaderType) -> Option<Vec<u32>> {
-	let glsl = match fs::read_to_string(shader_path) {
+fn create_shader(shader_path: &str, shader_type: ShaderType) -> Option<Vec<u32>> {
+	let path = Path::new(shader_path);
+
+	let glsl = match fs::read_to_string(&path) {
 		Ok(glsl_shader) => glsl_shader,
-		Err(_) => return None,
+		Err(e) => {
+			println!("{}", e);
+			return None;
+		}
 	};
 	let file = match glsl_to_spirv::compile(&glsl, shader_type) {
 		Ok(spirv_file) => spirv_file,
