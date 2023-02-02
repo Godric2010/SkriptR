@@ -1,6 +1,8 @@
+use std::hash::{Hash, Hasher};
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Vertex {
-	position: [f32; 3],
-	uv: [f32; 2],
+	pub position: [f32; 3],
+	pub uv: [f32; 2],
 }

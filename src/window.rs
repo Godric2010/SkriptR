@@ -1,8 +1,10 @@
+use std::borrow::Borrow;
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use resa_ecs::world::World;
+use resa_renderer::mesh::create_primitive_quad;
 use resa_renderer::ResaRenderer;
 
 #[allow(dead_code)]
@@ -69,6 +71,7 @@ impl Window {
 		let mut world = world_instance;
 
 		// rendering_controller.add_mesh_to_renderer(&create_primitive_quad());
+		let mesh_id = rendering_controller.register_mesh(create_primitive_quad());
 
 		let start_time = std::time::Instant::now();
 		let mut anim = 0.0;
@@ -103,7 +106,7 @@ impl Window {
 					/* for entity in &mut scene {
 						 entity.update()
 					 }*/
-					rendering_controller.render(/*&mut world*/);
+					rendering_controller.render(&[mesh_id]);
 					if loop_runs % 10 == 0 {
 						loop_runs = 0;
 

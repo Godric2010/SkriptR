@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::{io, iter};
-use std::io::Write;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -20,6 +19,7 @@ use crate::core::{Core, CoreDevice};
 use crate::descriptors::DescSetLayout;
 use crate::framebuffer::FramebufferData;
 use crate::graphics_pipeline::GraphicsPipeline;
+use crate::mesh_controller::MeshController;
 use crate::RendererConfig;
 use crate::renderpass::RenderPass;
 use crate::swapchain::Swapchain;
@@ -35,7 +35,7 @@ pub(crate) struct Renderer<B: Backend> {
 	framebuffer_data: FramebufferData<B>,
 	viewport: Viewport,
 	pipeline: GraphicsPipeline<B>,
-	vertex_buffer: Buffer<B>,
+	vertex_buffers: Vec<Buffer<B>>,
 	uniform: Uniform<B>,
 	uniform_desc_pool: Option<B::DescriptorPool>,
 	pub recreate_swapchain: bool,
@@ -45,7 +45,7 @@ pub(crate) struct Renderer<B: Backend> {
 }
 
 impl<B: Backend> Renderer<B> {
-	pub(crate) fn new(window: &Window,config: RendererConfig) -> Self {
+	pub(crate) fn new(window: &Window, config: RendererConfig) -> Self {
 
 		// Create the connection between code and gpu.
 		let mut core = Core::<B>::create(&window).unwrap();
@@ -93,12 +93,13 @@ impl<B: Backend> Renderer<B> {
 
 		let uniform = Uniform::new(Rc::clone(&device), &core.adapter.memory_types, &[1f32, 1.0f32, 1.0f32, 1.0f32], uniform_desc, 0);
 
-		let vertex_buffer = Buffer::new::<Vertex>(
-			Rc::clone(&device),
-			&[],
-			Usage::VERTEX,
-			&core.adapter.memory_types,
-		);
+		// let vertex_buffer = Buffer::new::<Vertex>(
+		// 	Rc::clone(&device),
+		// 	&[],
+		// 	Usage::VERTEX,
+		// 	&core.adapter.memory_types,
+		// );
+
 
 		// Create swapchain and render pass and pipelines
 		let swapchain = Swapchain::new(&mut *core.surface, &*device.borrow(), Extent2D {
@@ -133,14 +134,27 @@ impl<B: Backend> Renderer<B> {
 			framebuffer_data,
 			viewport,
 			pipeline,
-			vertex_buffer,
+			vertex_buffers: vec![],
 			uniform_desc_pool,
 			uniform,
 			recreate_swapchain: true,
 			bg_color: [0.1, 0.1, 0.1, 1.0],
 			frames_drawn: 0,
 			start_time: Instant::now(),
+
 		}
+	}
+
+	pub fn add_vertex_buffer(&mut self, vertices: &[Vertex])-> usize{
+		let vertex_buffer = Buffer::new::<Vertex>(
+			Rc::clone(&self.device),
+			vertices,
+			Usage::VERTEX,
+			&self.core.adapter.memory_types,
+		);
+		let buffer_id = self.vertex_buffers.len();
+		self.vertex_buffers.push(vertex_buffer);
+		buffer_id
 	}
 
 	pub fn recreate_swapchain(&mut self, dimensions: Extent2D) {
@@ -170,7 +184,7 @@ impl<B: Backend> Renderer<B> {
 		self.viewport = self.swapchain.make_viewport();
 	}
 
-	pub fn draw(&mut self) {
+	pub fn draw(&mut self, mesh_ids: &[u64], mesh_controller: &MeshController) {
 		if self.recreate_swapchain {
 			self.recreate_swapchain(Extent2D { width: self.swapchain.extent.width, height: self.swapchain.extent.height });
 			self.recreate_swapchain = false;
@@ -208,7 +222,6 @@ impl<B: Backend> Renderer<B> {
 			cmd_buffer.set_viewports(0, iter::once(self.viewport.clone()));
 			cmd_buffer.set_scissors(0, iter::once(self.viewport.rect));
 			cmd_buffer.bind_graphics_pipeline(self.pipeline.pipeline.as_ref().unwrap());
-			cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffer.get(), SubRange::WHOLE)));
 			cmd_buffer.bind_graphics_descriptor_sets(self.pipeline.pipeline_layout.as_ref().unwrap(),
 				0,
 				vec![
@@ -232,7 +245,14 @@ impl<B: Backend> Renderer<B> {
 				SubpassContents::Inline,
 			);
 
-			cmd_buffer.draw(0..3, 0..1);
+			for mesh_id in mesh_ids.iter(){
+				let (buffer_id, amount_of_verts) = mesh_controller.get_mesh_data(mesh_id);
+
+				cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffers[buffer_id as usize].get(), SubRange::WHOLE)));
+				cmd_buffer.draw(0..amount_of_verts as u32, 0..1);
+			}
+
+
 			cmd_buffer.end_render_pass();
 			cmd_buffer.finish();
 
@@ -255,13 +275,10 @@ impl<B: Backend> Renderer<B> {
 		}
 	}
 
-	pub fn get_fps(&self) -> f32{
+	pub fn get_fps(&self) -> f32 {
 		let elapsed_time = self.start_time.elapsed();
-		let fps = self.frames_drawn as f32 /  elapsed_time.as_secs_f32() ;
+		let fps = self.frames_drawn as f32 / elapsed_time.as_secs_f32();
 		fps
 	}
-
-
-
 }
 
