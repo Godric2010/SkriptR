@@ -44,4 +44,8 @@ impl ResaRenderer {
     pub fn render(&mut self){
        self.renderer.draw();
     }
+
+    pub fn get_fps(&self) -> f32{
+        self.renderer.get_fps()
+    }
 }

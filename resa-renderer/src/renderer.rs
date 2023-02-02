@@ -1,6 +1,8 @@
 use std::cell::RefCell;
-use std::iter;
+use std::{io, iter};
+use std::io::Write;
 use std::rc::Rc;
+use std::time::Instant;
 
 use gfx_hal::Backend;
 use gfx_hal::buffer::{SubRange, Usage};
@@ -38,6 +40,8 @@ pub(crate) struct Renderer<B: Backend> {
 	uniform_desc_pool: Option<B::DescriptorPool>,
 	pub recreate_swapchain: bool,
 	bg_color: ColorValue,
+	frames_drawn: usize,
+	start_time: Instant,
 }
 
 impl<B: Backend> Renderer<B> {
@@ -134,6 +138,8 @@ impl<B: Backend> Renderer<B> {
 			uniform,
 			recreate_swapchain: true,
 			bg_color: [0.1, 0.1, 0.1, 1.0],
+			frames_drawn: 0,
+			start_time: Instant::now(),
 		}
 	}
 
@@ -180,6 +186,7 @@ impl<B: Backend> Renderer<B> {
 
 		let frame_index = (self.swapchain.frame_index % self.swapchain.frame_queue_size) as usize;
 		self.swapchain.frame_index += 1;
+		self.frames_drawn += 1;
 
 		let (framebuffer, command_pool, command_buffers, sem_image_presentation) = self.framebuffer_data.get_frame_data(frame_index);
 
@@ -247,4 +254,14 @@ impl<B: Backend> Renderer<B> {
 			}
 		}
 	}
+
+	pub fn get_fps(&self) -> f32{
+		let elapsed_time = self.start_time.elapsed();
+		let fps = self.frames_drawn as f32 /  elapsed_time.as_secs_f32() ;
+		fps
+	}
+
+
+
 }
+

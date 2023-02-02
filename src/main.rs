@@ -57,6 +57,7 @@ fn main() {
 			return;
 		}*/
 
+	println!("{}", usize::MAX);
 	window.set_renderer_instance(renderer);
 	// println!("Start rendering!");
 	window.run_window_loop(world);
