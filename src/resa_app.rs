@@ -1,30 +1,30 @@
 use std::borrow::Borrow;
+use std::cell::RefCell;
+use std::rc::Rc;
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::WindowBuilder;
+use winit::window::{WindowBuilder, Window};
 use resa_ecs::world::World;
-use resa_renderer::mesh::create_primitive_quad;
-use resa_renderer::ResaRenderer;
+use resa_renderer::mesh::{create_primitive_quad, create_primitive_triangle};
+use resa_renderer::{RendererConfig, ResaRenderer};
 
 #[allow(dead_code)]
-pub struct Window {
+pub struct ResaApp {
 	pub name: String,
 	logical_size: LogicalSize<u32>,
 	pub physical_size: PhysicalSize<u32>,
 	pub event_loop: EventLoop<()>,
-	pub instance: winit::window::Window,
-	rendering_controller: Option<ResaRenderer>,
+	pub window: Window,
+	pub renderer: Rc<RefCell<ResaRenderer>>,
+	pub world: Rc<RefCell<World>>,
 }
 
-impl Window {
+impl ResaApp {
 	pub fn new(name: &str, width: u32, height: u32) -> Option<Self> {
 		let event_loop = EventLoop::new();
 
-		let primary_monitor = match event_loop.primary_monitor() {
-			Some(monitor) => monitor,
-			None => return None,
-		};
+		let primary_monitor = event_loop.primary_monitor()?;
 
 		let dpi = primary_monitor.scale_factor();
 		let logical_size = LogicalSize::new(width, height);
@@ -42,36 +42,31 @@ impl Window {
 			}
 		};
 
+		let renderer = Rc::new(RefCell::new(ResaRenderer::new(&window, RendererConfig {
+			extent: physical_size.clone(),
+			vertex_shader_path: "./src/rendering/shaders/base.vert".to_string(),
+			fragment_shader_path: "./src/rendering/shaders/base.frag".to_string(),
+		})));
 
-		Some(Window {
+		let world = Rc::new(RefCell::new(World::new()));
+
+		Some(ResaApp {
 			name: name.to_string(),
 			logical_size,
 			physical_size,
 			event_loop,
-			instance: window,
-			rendering_controller: None,
+			window,
+			renderer,
+			world,
 		})
 	}
 
-	pub fn set_renderer_instance(&mut self, renderer: resa_renderer::ResaRenderer) {
-		self.rendering_controller = Some(renderer);
-	}
 
 	#[allow(unused)]
-	pub fn run_window_loop(mut self, world_instance: World) {
+	pub fn run_window_loop(mut self) {
 		let mut should_configure_swapchain = true;
-		let mut rendering_controller = match self.rendering_controller {
-			Some(rendering_controller) => rendering_controller,
-			None => {
-				println!("No renderer found! End application!");
-				return;
-			}
-		};
 
-		let mut world = world_instance;
-
-		// rendering_controller.add_mesh_to_renderer(&create_primitive_quad());
-		let mesh_id = rendering_controller.register_mesh(create_primitive_quad());
+		let mesh_id = self.renderer.borrow_mut().register_mesh(create_primitive_triangle());
 
 		let start_time = std::time::Instant::now();
 		let mut anim = 0.0;
@@ -96,21 +91,21 @@ impl Window {
 					}
 					_ => (),
 				}
-				Event::MainEventsCleared => self.instance.request_redraw(),
+				Event::MainEventsCleared => self.window.request_redraw(),
 				Event::RedrawRequested(_) => {
 					if should_configure_swapchain {
 						// rendering_controller.reconfigure_swapchain(&self.physical_size, &mut world);
-						rendering_controller.refresh();
+						self.renderer.borrow_mut().refresh();
 						should_configure_swapchain = false;
 					}
 					/* for entity in &mut scene {
 						 entity.update()
 					 }*/
-					rendering_controller.render(&[mesh_id]);
+					self.renderer.borrow_mut().render(&[mesh_id]);
 					if loop_runs % 10 == 0 {
 						loop_runs = 0;
 
-						println!("{}", rendering_controller.get_fps());
+						println!("{}", self.renderer.borrow_mut().get_fps());
 					}
 				}
 				_ => (),

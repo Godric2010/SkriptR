@@ -2,7 +2,7 @@ use winit::dpi::PhysicalSize;
 use resa_ecs::world::World;
 use crate::rendering::mesh::Mesh;
 use crate::rendering::renderer::Renderer;
-use crate::window::Window;
+use crate::resa_app::ResaApp;
 
 mod renderer;
 mod commands;
@@ -20,10 +20,10 @@ pub struct RenderingController {
 }
 
 impl RenderingController {
-    pub fn new(window: &Window) -> Self {
+    pub fn new(app: &ResaApp) -> Self {
         Self {
-            renderer_instance: Renderer::new(&window.name, &window.physical_size, &window
-                .instance).unwrap()
+            renderer_instance: Renderer::new(&app.name, &app.physical_size, &app.window
+                ).unwrap()
         }
     }
 

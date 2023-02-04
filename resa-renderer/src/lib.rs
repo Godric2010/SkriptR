@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use winit::dpi::PhysicalSize;
 use winit::window::{Window};
 use crate::mesh::Mesh;
@@ -17,6 +19,7 @@ mod uniform;
 mod image_buffer;
 pub mod mesh;
 mod mesh_controller;
+pub mod material;
 
 pub struct RendererConfig {
     pub extent: PhysicalSize<u32>,

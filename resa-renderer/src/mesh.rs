@@ -1,5 +1,4 @@
 use std::hash::{Hash, Hasher};
-use crate::buffer::Buffer;
 use crate::vertex::Vertex;
 
 pub struct Mesh {
@@ -28,13 +27,22 @@ pub fn create_primitive_quad() -> Mesh {
 		Vertex { position: [-0.1, -0.1, 0.0], uv: [0.0, 0.0] },
 		Vertex { position: [-0.1, 0.1, 0.0], uv: [0.0, 1.0] },
 		Vertex { position: [0.1, 0.1, 0.0], uv: [1.0, 1.0] },
-
 		Vertex { position: [-0.1, -0.1, 0.0], uv: [0.0, 0.0] },
 		Vertex { position: [0.1, 0.1, 0.0], uv: [1.0, 1.0] },
 		Vertex { position: [0.1, -0.1, 0.0], uv: [1.0, 0.0] },
 	];
 	let triangle_list = vec![[0, 1, 2], [0, 2, 3]];
-	Mesh::new(vertices,triangle_list)
+	Mesh::new(vertices, triangle_list)
+}
+
+pub fn create_primitive_triangle() -> Mesh {
+	let vertices = vec![
+		Vertex { position: [-0.5, -0.5, 0.0], uv: [0.0, 0.0] },
+		Vertex { position: [0.0, 0.5, 0.0], uv: [0.5, 1.0] },
+		Vertex { position: [0.5, -0.5, 0.0], uv: [1.0, 0.0] },
+	];
+	let triangle_list = vec![[0, 1, 2]];
+	Mesh::new(vertices, triangle_list)
 }
 
 

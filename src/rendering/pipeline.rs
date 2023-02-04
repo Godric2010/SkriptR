@@ -4,7 +4,7 @@ use gfx_hal::device::Device;
 use gfx_hal::format::Format;
 use gfx_hal::pass::Subpass;
 use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Element, EntryPoint, Face, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
-use shaderc::ShaderKind;
+// use shaderc::ShaderKind;
 use crate::rendering::mesh::Vertex;
 use crate::rendering::push_constants::PushConstants;
 
@@ -31,11 +31,11 @@ impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
 
         let vertex_shader_module = unsafe {
             device.create_shader_module(&compile_shader
-                (vertex_shader, ShaderKind::Vertex)).expect("Failed to create vertex shader module")
+                (vertex_shader/*, ShaderKind::Vertex*/)).expect("Failed to create vertex shader module")
         };
         let fragment_shader_module = unsafe {
             device.create_shader_module(&compile_shader
-                (fragment_shader, ShaderKind::Fragment)).expect("Failed to create frag shader module")
+                (fragment_shader/*, ShaderKind::Fragment*/)).expect("Failed to create frag shader module")
         };
 
         let vs_entry = EntryPoint {
@@ -131,9 +131,10 @@ impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
 }
 
 #[allow(duplicate_macro_attributes)]
-fn compile_shader(glsl: &str, shader_kind: ShaderKind) -> Vec<u32> {
-    let compiler = shaderc::Compiler::new().unwrap();
+fn compile_shader(glsl: &str/*, shader_kind: ShaderKind*/) -> Vec<u32> {
+  /*  let compiler = shaderc::Compiler::new().unwrap();
 
     let compiled_shader = compiler.compile_into_spirv(glsl, shader_kind, "unnamed", "main", None).expect("Failed to compile shader");
-    compiled_shader.as_binary().to_vec()
+    compiled_shader.as_binary().to_vec()*/
+    vec![]
 }

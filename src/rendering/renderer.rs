@@ -273,7 +273,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
             graphics_command_buffer.set_scissors(0, iter::once(self.viewport.rect));
             graphics_command_buffer.bind_graphics_pipeline(&self.graphics_pipelines[0].pipeline);
 
-            graphics_command_buffer.begin_render_pass(
+           /* graphics_command_buffer.begin_render_pass(
                 &self.render_passes[0].pass,
                 &self.framebuffer,
                 self.viewport.rect,
@@ -306,7 +306,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                     projection: projection_mat,
                     view: view_mat,
                     model: transform_matrix,
-                    color: mesh_renderer.color,
+                    color: [0.0,0.0,0.0,0.0]//mesh_renderer.color,
                 };
 
 
@@ -339,7 +339,7 @@ impl<B: gfx_hal::Backend> Renderer<B> {
                 graphics_command_buffer.draw(0..vertex_count, 0..1);
             }
 
-            graphics_command_buffer.end_render_pass();
+            graphics_command_buffer.end_render_pass();*/
             graphics_command_buffer.finish();
         };
 
