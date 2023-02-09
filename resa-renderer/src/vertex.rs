@@ -1,5 +1,3 @@
-use std::hash::{Hash, Hasher};
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Vertex {

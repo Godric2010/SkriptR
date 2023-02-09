@@ -5,9 +5,11 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{WindowBuilder, Window};
+use resa_ecs::entity::Entity;
 use resa_ecs::world::World;
-use resa_renderer::mesh::{create_primitive_quad, create_primitive_triangle};
+use resa_renderer::mesh::{create_primitive_quad, create_primitive_triangle, Mesh};
 use resa_renderer::{RendererConfig, ResaRenderer};
+use crate::rendering::mesh_renderer::MeshRenderer;
 
 #[allow(dead_code)]
 pub struct ResaApp {
@@ -61,12 +63,14 @@ impl ResaApp {
 		})
 	}
 
+	pub fn load_mesh(&mut self, mesh: Mesh) -> MeshRenderer {
+		let mesh_id = self.renderer.borrow_mut().register_mesh(mesh);
+		MeshRenderer::new(mesh_id, 0)
+	}
 
 	#[allow(unused)]
 	pub fn run_window_loop(mut self) {
 		let mut should_configure_swapchain = true;
-
-		let mesh_id = self.renderer.borrow_mut().register_mesh(create_primitive_triangle());
 
 		let start_time = std::time::Instant::now();
 		let mut anim = 0.0;
@@ -101,7 +105,13 @@ impl ResaApp {
 					/* for entity in &mut scene {
 						 entity.update()
 					 }*/
-					self.renderer.borrow_mut().render(&[mesh_id]);
+					let mut mesh_ids = Vec::new();
+					for mesh_components in self.world.borrow_mut().get_all_components_of_type::<MeshRenderer>().unwrap() {
+						mesh_ids.push(mesh_components.0.mesh_id);
+					}
+
+
+					self.renderer.borrow_mut().render(&mesh_ids);
 					if loop_runs % 10 == 0 {
 						loop_runs = 0;
 

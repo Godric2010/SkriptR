@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::{io, iter};
+use std::{iter};
 use std::rc::Rc;
 use std::time::Instant;
 

@@ -1,6 +1,7 @@
 use std::hash::{Hash, Hasher};
 use crate::vertex::Vertex;
 
+// #[derive(Copy, Clone)]
 pub struct Mesh {
 	pub vertices: Vec<Vertex>,
 	pub triangles: Vec<[i32; 3]>,
@@ -24,12 +25,12 @@ impl Hash for Mesh {
 
 pub fn create_primitive_quad() -> Mesh {
 	let vertices = vec![
-		Vertex { position: [-0.1, -0.1, 0.0], uv: [0.0, 0.0] },
-		Vertex { position: [-0.1, 0.1, 0.0], uv: [0.0, 1.0] },
-		Vertex { position: [0.1, 0.1, 0.0], uv: [1.0, 1.0] },
-		Vertex { position: [-0.1, -0.1, 0.0], uv: [0.0, 0.0] },
-		Vertex { position: [0.1, 0.1, 0.0], uv: [1.0, 1.0] },
-		Vertex { position: [0.1, -0.1, 0.0], uv: [1.0, 0.0] },
+		Vertex { position: [-1.0, -1.0, 0.0], uv: [0.0, 0.0] },
+		Vertex { position: [-1.0, 1.0, 0.0], uv: [0.0, 1.0] },
+		Vertex { position: [1.0, 1.0, 0.0], uv: [1.0, 1.0] },
+		Vertex { position: [-1.0, -1.0, 0.0], uv: [0.0, 0.0] },
+		Vertex { position: [1.0, 1.0, 0.0], uv: [1.0, 1.0] },
+		Vertex { position: [1.0, -1.0, 0.0], uv: [1.0, 0.0] },
 	];
 	let triangle_list = vec![[0, 1, 2], [0, 2, 3]];
 	Mesh::new(vertices, triangle_list)

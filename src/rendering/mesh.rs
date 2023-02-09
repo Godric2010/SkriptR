@@ -10,20 +10,4 @@ pub struct Vertex {
     uv: [f32; 2],
 }
 
-pub fn create_primitive_quad() -> Mesh {
-    let vertices = vec![
-        Vertex { position: [-1.0, -1.0, 0.0], uv: [0.0, 0.0] },
-        Vertex { position: [-1.0, 1.0, 0.0], uv: [0.0, 1.0] },
-        Vertex { position: [1.0, 1.0, 0.0], uv: [1.0, 1.0] },
 
-        Vertex { position: [-1.0, -1.0, 0.0], uv: [0.0, 0.0] },
-        Vertex { position: [1.0, 1.0, 0.0], uv: [1.0, 1.0] },
-        Vertex { position: [1.0, -1.0, 0.0], uv: [1.0, 0.0] },
-    ];
-    let triangle_list = vec![[0, 1, 2], [0, 2, 3]];
-
-    Mesh {
-        vertices,
-        triangle_list
-    }
-}

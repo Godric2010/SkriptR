@@ -1,14 +1,8 @@
 extern crate core;
 
-use std::borrow::{Borrow, BorrowMut};
-use winit::dpi::PhysicalSize;
-
-use resa_ecs::world::World;
-use resa_renderer::{RendererConfig, ResaRenderer};
+use resa_renderer::mesh::{create_primitive_quad, create_primitive_triangle};
 
 use crate::camera::Camera;
-use crate::rendering::mesh::create_primitive_quad;
-use crate::rendering::mesh_renderer::MeshRenderer;
 use crate::transform::Transform;
 
 mod rendering;
@@ -18,12 +12,12 @@ mod camera;
 
 
 fn main() {
-	let app = match resa_app::ResaApp::new("SkriptR", 640, 480) {
+	let mut app = match resa_app::ResaApp::new("SkriptR", 640, 480) {
 		Some(window) => window,
 		None => return,
 	};
 
-	let world  = &*app.world.clone();//app.borrow().world.borrow_mut();
+	let world = &*app.world.clone();//app.borrow().world.borrow_mut();
 
 	let camera_entity = world.borrow_mut().new_entity();
 	let camera = Camera::new(45., [0.1, 100.], true);
@@ -34,17 +28,17 @@ fn main() {
 	let entity01 = world.borrow_mut().new_entity();
 
 	let transform = Transform { position: [0.0, 0.0, 0.0] };
-	// let mesh_renderer = MeshRenderer { mesh: create_primitive_quad(), color: [0.5, 0.0, 0.0, 1.0] };
+	let mesh_renderer = app.load_mesh(create_primitive_triangle());
 
 	world.borrow_mut().add_component(&entity01, transform);
-	// world.add_component(&entity01, mesh_renderer);
+	world.borrow_mut().add_component(&entity01, mesh_renderer);
 
 
 	let entity02 = world.borrow_mut().new_entity();
 	let transform = Transform { position: [0.8, 0.2, 0.0] };
-	// let mesh_renderer = MeshRenderer { mesh: create_primitive_quad(), color: [0.0, 0.0, 1.0, 1.0] };
+	let mesh_renderer = app.load_mesh(create_primitive_quad());
 	world.borrow_mut().add_component(&entity02, transform);
-	// world.add_component(&entity02, mesh_renderer);
+	world.borrow_mut().add_component(&entity02, mesh_renderer);
 
 	app.run_window_loop();
 }

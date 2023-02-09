@@ -1,10 +1,8 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use gfx_hal::Backend;
 use crate::mesh::Mesh;
 use crate::renderer::Renderer;
-use crate::ResaRenderer;
 
 pub struct MeshController{
 	pub mesh_map: HashMap<u64, Mesh>,
