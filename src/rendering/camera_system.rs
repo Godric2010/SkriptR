@@ -1,6 +1,6 @@
 use glm::{Matrix4, Vector3};
-use crate::camera::Camera;
-use crate::transform::Transform;
+use crate::rendering::camera::Camera;
+use crate::rendering::transform::Transform;
 
 pub fn get_camera_projection_matrix(camera: &Camera) -> [[f32; 4]; 4]{
     let mat =

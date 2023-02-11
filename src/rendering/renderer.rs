@@ -1,28 +1,22 @@
-use crate::camera::Camera;
+use crate::rendering::camera::Camera;
 use crate::rendering::buffers::Buffer;
 use crate::rendering::commands::CommandBufferController;
-use crate::rendering::mesh::{Mesh, Vertex};
-use crate::rendering::mesh_renderer::MeshRenderer;
 use crate::rendering::pass::RenderPass;
 use crate::rendering::pipeline::GraphicsPipeline;
-use crate::rendering::push_constants::PushConstants;
-use crate::rendering::{camera_system};
-use crate::transform::Transform;
 use gfx_hal::adapter::{Adapter, PhysicalDevice};
-use gfx_hal::buffer::{SubRange, Usage};
+use gfx_hal::buffer::{ Usage};
 use gfx_hal::command::{
-    ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, RenderAttachmentInfo,
+    ClearValue, CommandBuffer, CommandBufferFlags, RenderAttachmentInfo,
     SubpassContents,
 };
 use gfx_hal::device::Device;
 use gfx_hal::image::Extent;
 use gfx_hal::memory::{Properties, Segment};
-use gfx_hal::pso::{Rect, ShaderStageFlags, Viewport,};
+use gfx_hal::pso::{Rect,  Viewport,};
 use gfx_hal::queue::{Queue, QueueFamily, QueueGroup};
 use gfx_hal::window::{Extent2D, PresentationSurface, Surface, SwapchainConfig};
 use gfx_hal::{Instance};
 use resa_ecs::world::World;
-use std::borrow::Borrow;
 use std::mem::{ManuallyDrop};
 use std::{iter, ptr};
 use winit::dpi::PhysicalSize;
@@ -383,40 +377,40 @@ impl<B: gfx_hal::Backend> Renderer<B> {
         ]
     }
 
-    pub fn register_mesh_vertex_buffer(&mut self, mesh: &Mesh) {
-        let vertex_buffer_length = mesh.vertices.len() * std::mem::size_of::<Vertex>();
-        let mut buffer: Buffer<B> = match Buffer::new(
-            &*self.device,
-            &self.adapter.physical_device,
-            vertex_buffer_length,
-            Usage::VERTEX,
-            Properties::CPU_VISIBLE,
-        ) {
-            Some(buffer) => buffer,
-            None => {
-                println!("buffer registration failed!");
-                return;
-            }
-        };
-
-        unsafe {
-            let mapped_memory = self
-                .device
-                .map_memory(&mut *buffer.buffer_memory, Segment::ALL)
-                .expect("Failed to map memory!");
-            ptr::copy_nonoverlapping(
-                mesh.vertices.as_ptr() as *const u8,
-                mapped_memory,
-                vertex_buffer_length,
-            );
-            let _ = self
-                .device
-                .flush_mapped_memory_ranges(iter::once((&*buffer.buffer_memory, Segment::ALL)))
-                .expect("out of memory");
-            self.device.unmap_memory(&mut *buffer.buffer_memory);
-        }
-        self.vertex_buffers.push(buffer);
-    }
+    // pub fn register_mesh_vertex_buffer(&mut self, mesh: &Mesh) {
+    //     let vertex_buffer_length = mesh.vertices.len() * std::mem::size_of::<Vertex>();
+    //     let mut buffer: Buffer<B> = match Buffer::new(
+    //         &*self.device,
+    //         &self.adapter.physical_device,
+    //         vertex_buffer_length,
+    //         Usage::VERTEX,
+    //         Properties::CPU_VISIBLE,
+    //     ) {
+    //         Some(buffer) => buffer,
+    //         None => {
+    //             println!("buffer registration failed!");
+    //             return;
+    //         }
+    //     };
+    //
+    //     unsafe {
+    //         let mapped_memory = self
+    //             .device
+    //             .map_memory(&mut *buffer.buffer_memory, Segment::ALL)
+    //             .expect("Failed to map memory!");
+    //         ptr::copy_nonoverlapping(
+    //             mesh.vertices.as_ptr() as *const u8,
+    //             mapped_memory,
+    //             vertex_buffer_length,
+    //         );
+    //         let _ = self
+    //             .device
+    //             .flush_mapped_memory_ranges(iter::once((&*buffer.buffer_memory, Segment::ALL)))
+    //             .expect("out of memory");
+    //         self.device.unmap_memory(&mut *buffer.buffer_memory);
+    //     }
+    //     self.vertex_buffers.push(buffer);
+    // }
 }
 
 impl<B: gfx_hal::Backend> Drop for Renderer<B> {

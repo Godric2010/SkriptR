@@ -19,6 +19,7 @@ use crate::core::{Core, CoreDevice};
 use crate::descriptors::DescSetLayout;
 use crate::framebuffer::FramebufferData;
 use crate::graphics_pipeline::GraphicsPipeline;
+use crate::helper::MVP;
 use crate::mesh_controller::MeshController;
 use crate::RendererConfig;
 use crate::renderpass::RenderPass;
@@ -145,7 +146,7 @@ impl<B: Backend> Renderer<B> {
 		}
 	}
 
-	pub fn add_vertex_buffer(&mut self, vertices: &[Vertex])-> usize{
+	pub fn add_vertex_buffer(&mut self, vertices: &[Vertex]) -> usize {
 		let vertex_buffer = Buffer::new::<Vertex>(
 			Rc::clone(&self.device),
 			vertices,
@@ -184,7 +185,7 @@ impl<B: Backend> Renderer<B> {
 		self.viewport = self.swapchain.make_viewport();
 	}
 
-	pub fn draw(&mut self, mesh_ids: &[u64], mesh_controller: &MeshController) {
+	pub fn draw(&mut self, mesh_ids: &[(u64, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], mesh_controller: &MeshController) {
 		if self.recreate_swapchain {
 			self.recreate_swapchain(Extent2D { width: self.swapchain.extent.width, height: self.swapchain.extent.height });
 			self.recreate_swapchain = false;
@@ -222,13 +223,13 @@ impl<B: Backend> Renderer<B> {
 			cmd_buffer.set_viewports(0, iter::once(self.viewport.clone()));
 			cmd_buffer.set_scissors(0, iter::once(self.viewport.rect));
 			cmd_buffer.bind_graphics_pipeline(self.pipeline.pipeline.as_ref().unwrap());
-			cmd_buffer.bind_graphics_descriptor_sets(self.pipeline.pipeline_layout.as_ref().unwrap(),
+			/*cmd_buffer.bind_graphics_descriptor_sets(self.pipeline.pipeline_layout.as_ref().unwrap(),
 				0,
 				vec![
 					self.uniform.desc.as_ref().unwrap().set.as_ref().unwrap(),
 				].into_iter(),
 				iter::empty(),
-			);
+			);*/
 
 			cmd_buffer.begin_render_pass(
 				self.render_pass.render_pass.as_ref().unwrap(),
@@ -245,10 +246,30 @@ impl<B: Backend> Renderer<B> {
 				SubpassContents::Inline,
 			);
 
-			for mesh_id in mesh_ids.iter(){
+			for (mesh_id, transform) in mesh_ids.iter() {
 				let (buffer_id, amount_of_verts) = mesh_controller.get_mesh_data(mesh_id);
 
+				let model_transform = transform;
+
+				let mvp = MVP {
+					model: *transform,
+					view: view_mat,
+					proj: projection_mat,
+				};
+
+				let mvp_bytes = mvp.as_bytes();
+				let pipeline_layout = self.pipeline.pipeline_layout.as_ref().unwrap();
+
 				cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffers[buffer_id as usize].get(), SubRange::WHOLE)));
+				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
+
+				cmd_buffer.bind_graphics_descriptor_sets(&pipeline_layout,
+					0,
+					vec![
+						self.uniform.desc.as_ref().unwrap().set.as_ref().unwrap(),
+					].into_iter(),
+					iter::empty(),
+				);
 				cmd_buffer.draw(0..amount_of_verts as u32, 0..1);
 			}
 

@@ -4,18 +4,17 @@
 layout(location = 0) in vec3 position;
 //layout(location = 1) in vec3 normal;
 
-//layout(push_constant) uniform PushConstants{
-//   /* vec3 position;
-//    float scale;*/
-//    mat4 projection;
-//    mat4 view;
-//    mat4 model;
-//    vec4 color;
-//} push_constants;
+layout(push_constant) uniform PushConstants{
+   /* vec3 position;
+    float scale;*/
+    mat4 model;
+    mat4 view;
+    mat4 projection;
+} push_constants;
 
 //layout(location = 0) out vec4 vertex_color;
 
 void main(){
 //    vertex_color = push_constants.color;//vec4(0.6, 0.2, 0.8, 1.0);
-    gl_Position = /*push_constants.projection * push_constants.view * push_constants.model */ vec4(position, 1.0);
+    gl_Position = push_constants.projection * push_constants.view * push_constants.model * vec4(position, 1.0);
 }

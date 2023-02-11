@@ -10,6 +10,7 @@ use gfx_hal::pass::Subpass;
 use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Element, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
 use glsl_to_spirv::ShaderType;
 use crate::core::CoreDevice;
+use crate::helper::MVP;
 use crate::vertex::Vertex;
 
 pub struct GraphicsPipeline<B: Backend> {
@@ -24,10 +25,11 @@ impl<B: Backend> GraphicsPipeline<B> {
 	pub fn new<'a, Is>(desc_layouts: Is, render_pass: &B::RenderPass, device_ptr: Rc<RefCell<CoreDevice<B>>>, vert_shader_path: &str, frag_shader_path: &str) -> Self where Is: Iterator<Item = &'a B::DescriptorSetLayout>,
 	{
 		let device = &device_ptr.borrow().device;
+		let push_constants_bytes = std::mem::size_of::<MVP>() as u32;
 		let pipeline_layout = unsafe {
 			device.create_pipeline_layout(
 				desc_layouts,
-				iter::once((ShaderStageFlags::VERTEX, 0..8)), // use no magic number for push constants!
+				iter::once((ShaderStageFlags::VERTEX, 0..push_constants_bytes)), // use no magic number for push constants!
 			)
 		}.expect("Cannot create pipeline layout!");
 

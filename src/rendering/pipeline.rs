@@ -4,8 +4,6 @@ use gfx_hal::device::Device;
 use gfx_hal::format::Format;
 use gfx_hal::pass::Subpass;
 use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Element, EntryPoint, Face, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
-// use shaderc::ShaderKind;
-use crate::rendering::mesh::Vertex;
 use crate::rendering::push_constants::PushConstants;
 
 pub struct GraphicsPipeline<B: gfx_hal::Backend> {
@@ -54,7 +52,7 @@ impl<B: gfx_hal::Backend> GraphicsPipeline<B> {
         let primitive_assembler = PrimitiveAssemblerDesc::Vertex {
             buffers: &[VertexBufferDesc{
                 binding: 0,
-                stride: std::mem::size_of::<Vertex>() as u32,
+                stride: /*std::mem::size_of::<Vertex>() as u32,*/0,
                 rate: VertexInputRate::Vertex,
             }],
             attributes: &[

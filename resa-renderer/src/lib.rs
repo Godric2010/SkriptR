@@ -18,6 +18,7 @@ mod image_buffer;
 pub mod mesh;
 mod mesh_controller;
 pub mod material;
+mod helper;
 
 pub struct RendererConfig {
     pub extent: PhysicalSize<u32>,
@@ -47,13 +48,11 @@ impl ResaRenderer {
     /// Refresh the renderers swapchain setting e.g. after a surface size change
     pub fn refresh(&mut self){
         self.renderer.recreate_swapchain = true;
-
-
     }
 
     /// Render all given meshes to the given output device
-    pub fn render(&mut self, mesh_ids: &[u64]){
-       self.renderer.draw(mesh_ids, &self.mesh_controller);
+    pub fn render(&mut self, mesh_ids: &[(u64, [[f32;4];4])], view_mat: [[f32; 4];4], projection_mat: [[f32; 4]; 4]){
+       self.renderer.draw(mesh_ids,view_mat, projection_mat, &self.mesh_controller);
     }
 
     pub fn get_fps(&self) -> f32{

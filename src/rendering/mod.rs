@@ -1,41 +1,80 @@
-use winit::dpi::PhysicalSize;
+use std::cell::RefCell;
+use std::rc::Rc;
+use winit::window::Window;
 use resa_ecs::world::World;
-use crate::rendering::mesh::Mesh;
-use crate::rendering::renderer::Renderer;
-use crate::resa_app::ResaApp;
+use resa_renderer::{RendererConfig, ResaRenderer};
+use resa_renderer::mesh::Mesh;
+use crate::rendering::camera::Camera;
+use crate::rendering::mesh_renderer::MeshRenderer;
+use crate::rendering::transform::{make_transform_matrix, Transform};
 
 mod renderer;
 mod commands;
 mod pass;
 mod pipeline;
-pub mod mesh;
 mod buffers;
 mod push_constants;
 pub mod mesh_renderer;
 mod camera_system;
+pub mod transform;
+pub mod camera;
 
 
-pub struct RenderingController {
-    renderer_instance: Renderer<backend::Backend>,
+pub struct RenderingSystem {
+	resa_renderer: ResaRenderer,
+	reconfigure_swapchain: bool,
+	frames_drawn: u32,
+
 }
 
-impl RenderingController {
-    pub fn new(app: &ResaApp) -> Self {
-        Self {
-            renderer_instance: Renderer::new(&app.name, &app.physical_size, &app.window
-                ).unwrap()
-        }
-    }
+impl RenderingSystem {
+	pub fn new(window: &Window, config: RendererConfig) -> RenderingSystem {
+		RenderingSystem {
+			resa_renderer: ResaRenderer::new(window, config),
+			reconfigure_swapchain: true,
+			frames_drawn: 0,
+		}
+	}
 
-    pub fn add_mesh_to_renderer(&mut self, mesh : &Mesh){
-        self.renderer_instance.register_mesh_vertex_buffer(mesh);
-    }
+	pub fn set_dirty(&mut self) {
+		self.reconfigure_swapchain = true;
+	}
 
-    pub fn reconfigure_swapchain(&mut self, surface_size: &PhysicalSize<u32>, world: &mut World) {
-        self.renderer_instance.recreate_swapchain(surface_size, world);
-    }
+	pub fn render(&mut self, world: &Rc<RefCell<World>>) {
+		if self.reconfigure_swapchain {
+			self.resa_renderer.refresh();
+			self.reconfigure_swapchain = false;
+		}
 
-    pub fn render(&mut self, world: &mut World) {
-        self.renderer_instance.render(world);
-    }
+		let world_binding = world.borrow();
+		let meshes = world_binding.get_all_components_of_type::<MeshRenderer>().unwrap();
+
+		let mut mesh_data = vec![];
+		for (mesh, entity) in meshes.iter() {
+			let transform = if let Some(t) = world.borrow().get_component::<Transform>(&entity) {
+				make_transform_matrix(&t)
+			} else {
+				make_transform_matrix(&Transform::idle())
+			};
+			mesh_data.push((mesh.mesh_id, transform))
+		}
+
+		let (camera, cam_entity) = world_binding.get_all_components_of_type::<Camera>().unwrap()[0];
+		let cam_transform = world_binding.get_component::<Transform>(&cam_entity).unwrap();
+
+		let view_matrix = camera_system::get_camera_view_matrix(&cam_transform);
+		let proj_matrix = camera_system::get_camera_projection_matrix(&camera);
+
+		self.resa_renderer.render(&mesh_data, view_matrix, proj_matrix);
+		self.frames_drawn += 1;
+		if self.frames_drawn % 10 == 0 {
+			self.frames_drawn = 0;
+			println!("{}", self.resa_renderer.get_fps());
+		}
+	}
+
+	pub fn load_mesh(&mut self, mesh: Mesh) -> MeshRenderer {
+		let mesh_id = self.resa_renderer.register_mesh(mesh);
+		MeshRenderer::new(mesh_id, 0)
+	}
 }
