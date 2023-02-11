@@ -8,12 +8,6 @@ use crate::rendering::camera::Camera;
 use crate::rendering::mesh_renderer::MeshRenderer;
 use crate::rendering::transform::{make_transform_matrix, Transform};
 
-mod renderer;
-mod commands;
-mod pass;
-mod pipeline;
-mod buffers;
-mod push_constants;
 pub mod mesh_renderer;
 mod camera_system;
 pub mod transform;

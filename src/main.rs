@@ -11,7 +11,7 @@ mod resa_app;
 
 
 fn main() {
-	let mut app = match resa_app::ResaApp::new("SkriptR", 640, 480) {
+	let mut app = match resa_app::ResaApp::new("SkriptR", 640, 360) {
 		Some(window) => window,
 		None => return,
 	};
