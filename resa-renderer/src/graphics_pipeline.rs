@@ -84,14 +84,14 @@ impl<B: Backend> GraphicsPipeline<B> {
 							offset: 0,
 						},
 					},
-					AttributeDesc {
-						location: 1,
-						binding: 0,
-						element: Element {
-							format: Format::Rg32Sfloat,
-							offset: 12,
-						},
-					},
+					// AttributeDesc {
+					// 	location: 1,
+					// 	binding: 0,
+					// 	element: Element {
+					// 		format: Format::Rg32Sfloat,
+					// 		offset: 12,
+					// 	},
+					// },
 				];
 
 				let mut pipeline_desc = GraphicsPipelineDesc::new(

@@ -92,7 +92,13 @@ impl<B: Backend> Renderer<B> {
 			Rc::clone(&device),
 		);
 
-		let uniform = Uniform::new(Rc::clone(&device), &core.adapter.memory_types, &[1f32, 1.0f32, 1.0f32, 1.0f32], uniform_desc, 0);
+		let uniform = Uniform::new(
+			Rc::clone(&device),
+			&core.adapter.memory_types,
+			&[1.0f32, 1.0f32, 1.0f32, 1.0f32],
+			uniform_desc,
+			0
+		);
 
 		// let vertex_buffer = Buffer::new::<Vertex>(
 		// 	Rc::clone(&device),
@@ -117,7 +123,7 @@ impl<B: Backend> Renderer<B> {
 		let framebuffer_data = FramebufferData::new(Rc::clone(&device), swapchain.frame_queue_size, framebuffer);
 
 		let pipeline = GraphicsPipeline::new(
-			vec![].into_iter(),
+			vec![uniform.get_layout()].into_iter(),
 			render_pass.render_pass.as_ref().unwrap(),
 			Rc::clone(&device),
 			config.vertex_shader_path.as_str(),
