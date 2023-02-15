@@ -5,6 +5,8 @@ use resa_renderer::mesh::{create_primitive_quad, create_primitive_triangle};
 
 use rendering::camera::Camera;
 use rendering::transform::Transform;
+use resa_renderer::graphics_pipeline::PipelineType;
+use resa_renderer::material::{Color, Material};
 
 mod rendering;
 mod resa_app;
@@ -16,7 +18,7 @@ fn main() {
 		None => return,
 	};
 
-	let world =  Rc::clone(&app.world);//app.borrow().world.borrow_mut();
+	let world = Rc::clone(&app.world);//app.borrow().world.borrow_mut();
 
 	let camera_entity = world.borrow_mut().new_entity();
 	let camera = Camera::new(45., [0.1, 100.], true);
@@ -27,7 +29,13 @@ fn main() {
 	let entity01 = world.borrow_mut().new_entity();
 
 	let transform = Transform { position: [0., 0., 0.0], angle: 0.0, scale: 1.0 };
-	let mesh_renderer = app.rendering.load_mesh(create_primitive_triangle());
+	let mut mesh_renderer = app.rendering.load_mesh(create_primitive_triangle());
+	let material = Material {
+		shader_id: 1,
+		pipeline_type: PipelineType::Opaque,
+		color: Color::new(255,0,0,255),
+	};
+	app.rendering.assign_material_to_mesh(&mut mesh_renderer, material);
 
 	world.borrow_mut().add_component(&entity01, transform);
 	world.borrow_mut().add_component(&entity01, mesh_renderer);
@@ -35,7 +43,16 @@ fn main() {
 
 	let entity02 = world.borrow_mut().new_entity();
 	let transform = Transform { position: [0.8, 0.2, 0.0], angle: 0.0, scale: 0.2 };
-	let mesh_renderer = app.rendering.load_mesh(create_primitive_quad());
+	let mut mesh_renderer = app.rendering.load_mesh(create_primitive_quad());
+
+	let material02 = Material{
+		shader_id: 1,
+		pipeline_type: PipelineType::Opaque,
+		color: Color::new(0,0,0,255	),
+	};
+
+	app.rendering.assign_material_to_mesh(&mut mesh_renderer, material02);
+
 	world.borrow_mut().add_component(&entity02, transform);
 	world.borrow_mut().add_component(&entity02, mesh_renderer);
 

@@ -13,41 +13,43 @@ use crate::core::CoreDevice;
 use crate::helper::MVP;
 use crate::vertex::Vertex;
 
+#[derive(Hash)]
+#[derive(Copy, Clone)]
+#[derive(Eq, PartialEq)]
+pub enum PipelineType{
+	Opaque,
+	Transparent,
+	UI,
+}
+
 pub struct GraphicsPipeline<B: Backend> {
 	pub pipeline: Option<B::GraphicsPipeline>,
 	pub pipeline_layout: Option<B::PipelineLayout>,
 	pub device: Rc<RefCell<CoreDevice<B>>>,
+	pub pipeline_type: PipelineType,
 }
 
 const ENTRY_NAME: &str = "main";
 
 impl<B: Backend> GraphicsPipeline<B> {
-	pub fn new<'a, Is>(desc_layouts: Is, render_pass: &B::RenderPass, device_ptr: Rc<RefCell<CoreDevice<B>>>, vert_shader_path: &str, frag_shader_path: &str) -> Self where Is: Iterator<Item = &'a B::DescriptorSetLayout>,
+	pub fn new<'a, Is>(desc_layouts: Is, render_pass: &B::RenderPass, device_ptr: Rc<RefCell<CoreDevice<B>>>, vert_shader: &[u32], frag_shader: &[u32]) -> Self where Is: Iterator<Item = &'a B::DescriptorSetLayout>,
 	{
 		let device = &device_ptr.borrow().device;
-		let push_constants_bytes = std::mem::size_of::<MVP>() as u32;
+		let push_constants_bytes = size_of::<MVP>() as u32;
 		let pipeline_layout = unsafe {
 			device.create_pipeline_layout(
 				desc_layouts,
-				iter::once((ShaderStageFlags::VERTEX, 0..push_constants_bytes)), // use no magic number for push constants!
+				iter::once((ShaderStageFlags::VERTEX, 0..push_constants_bytes)),
 			)
 		}.expect("Cannot create pipeline layout!");
 
 		let pipeline = {
 			let vs_module = {
-				let shader = match create_shader(vert_shader_path, ShaderType::Vertex) {
-					Some(shader) => shader,
-					None => panic!("Could not create vertex shader!"),
-				};
-				unsafe { device.create_shader_module(&shader).unwrap() }
+				unsafe { device.create_shader_module(vert_shader).unwrap() }
 			};
 
 			let fs_module = {
-				let shader = match create_shader(frag_shader_path, ShaderType::Fragment) {
-					Some(shader) => shader,
-					None => panic!("Could not create fragment shader!"),
-				};
-				unsafe { device.create_shader_module(&shader).unwrap() }
+				unsafe { device.create_shader_module(frag_shader).unwrap() }
 			};
 
 			let pipeline = {
@@ -133,6 +135,7 @@ impl<B: Backend> GraphicsPipeline<B> {
 			pipeline: Some(pipeline),
 			pipeline_layout: Some(pipeline_layout),
 			device: Rc::clone(&device_ptr),
+			pipeline_type: PipelineType::Opaque,
 		}
 	}
 }
@@ -144,27 +147,5 @@ impl<B: Backend> Drop for GraphicsPipeline<B> {
 			device.destroy_graphics_pipeline(self.pipeline.take().unwrap());
 			device.destroy_pipeline_layout(self.pipeline_layout.take().unwrap());
 		}
-	}
-}
-
-
-fn create_shader(shader_path: &str, shader_type: ShaderType) -> Option<Vec<u32>> {
-	let path = Path::new(shader_path);
-
-	let glsl = match fs::read_to_string(&path) {
-		Ok(glsl_shader) => glsl_shader,
-		Err(e) => {
-			println!("{}", e);
-			return None;
-		}
-	};
-	let file = match glsl_to_spirv::compile(&glsl, shader_type) {
-		Ok(spirv_file) => spirv_file,
-		Err(_) => return None,
-	};
-
-	match gfx_auxil::read_spirv(file) {
-		Ok(spirv) => Some(spirv),
-		Err(_) => None,
 	}
 }

@@ -18,8 +18,9 @@ use crate::buffer::Buffer;
 use crate::core::{Core, CoreDevice};
 use crate::descriptors::DescSetLayout;
 use crate::framebuffer::FramebufferData;
-use crate::graphics_pipeline::GraphicsPipeline;
+use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
+use crate::material_controller::MaterialController;
 use crate::mesh_controller::MeshController;
 use crate::RendererConfig;
 use crate::renderpass::RenderPass;
@@ -35,9 +36,9 @@ pub(crate) struct Renderer<B: Backend> {
 	render_pass: RenderPass<B>,
 	framebuffer_data: FramebufferData<B>,
 	viewport: Viewport,
-	pipeline: GraphicsPipeline<B>,
+	pipelines: Vec<GraphicsPipeline<B>>,
 	vertex_buffers: Vec<Buffer<B>>,
-	uniform: Uniform<B>,
+	uniform_buffers: Vec<Uniform<B>>,
 	uniform_desc_pool: Option<B::DescriptorPool>,
 	pub recreate_swapchain: bool,
 	bg_color: ColorValue,
@@ -53,26 +54,10 @@ impl<B: Backend> Renderer<B> {
 		let device = Rc::new(RefCell::new(CoreDevice::<B>::new(core.adapter.adapter.take().unwrap(), &core.surface)));
 
 		// Create buffers
-		let uniform_desc = DescSetLayout::new(
-			Rc::clone(&device),
-			vec![
-				DescriptorSetLayoutBinding {
-					binding: 0,
-					ty: DescriptorType::Buffer {
-						ty: BufferDescriptorType::Uniform,
-						format: BufferDescriptorFormat::Structured {
-							dynamic_offset: false,
-						},
-					},
-					count: 1,
-					stage_flags: ShaderStageFlags::FRAGMENT,
-					immutable_samplers: false,
-				}],
-		);
 
-		let mut uniform_desc_pool = unsafe {
+		let uniform_desc_pool = unsafe {
 			device.borrow().device.create_descriptor_pool(
-				1,
+				3,
 				iter::once(DescriptorRangeDesc {
 					ty: DescriptorType::Buffer {
 						ty: BufferDescriptorType::Uniform,
@@ -80,33 +65,11 @@ impl<B: Backend> Renderer<B> {
 							dynamic_offset: false,
 						},
 					},
-					count: 1,
+					count: 3,
 				}),
 				DescriptorPoolCreateFlags::empty(),
 			)
 		}.ok();
-
-		let uniform_desc = uniform_desc.create_desc_set(
-			uniform_desc_pool.as_mut().unwrap(),
-			"uniform",
-			Rc::clone(&device),
-		);
-
-		let uniform = Uniform::new(
-			Rc::clone(&device),
-			&core.adapter.memory_types,
-			&[1.0f32, 1.0f32, 1.0f32, 1.0f32],
-			uniform_desc,
-			0
-		);
-
-		// let vertex_buffer = Buffer::new::<Vertex>(
-		// 	Rc::clone(&device),
-		// 	&[],
-		// 	Usage::VERTEX,
-		// 	&core.adapter.memory_types,
-		// );
-
 
 		// Create swapchain and render pass and pipelines
 		let swapchain = Swapchain::new(&mut *core.surface, &*device.borrow(), Extent2D {
@@ -121,15 +84,6 @@ impl<B: Backend> Renderer<B> {
 				swapchain.extent).unwrap()
 		};
 		let framebuffer_data = FramebufferData::new(Rc::clone(&device), swapchain.frame_queue_size, framebuffer);
-
-		let pipeline = GraphicsPipeline::new(
-			vec![uniform.get_layout()].into_iter(),
-			render_pass.render_pass.as_ref().unwrap(),
-			Rc::clone(&device),
-			config.vertex_shader_path.as_str(),
-			config.fragment_shader_path.as_str(),
-		);
-
 		let viewport = swapchain.make_viewport();
 
 		Renderer {
@@ -140,10 +94,11 @@ impl<B: Backend> Renderer<B> {
 			render_pass,
 			framebuffer_data,
 			viewport,
-			pipeline,
+			pipelines: vec![],
 			vertex_buffers: vec![],
+			uniform_buffers: vec![],
 			uniform_desc_pool,
-			uniform,
+
 			recreate_swapchain: true,
 			bg_color: [0.1, 0.1, 0.1, 1.0],
 			frames_drawn: 0,
@@ -164,6 +119,81 @@ impl<B: Backend> Renderer<B> {
 		buffer_id
 	}
 
+	pub fn add_uniform_buffer(&mut self, buffer_data: &[f32]) -> usize {
+		let uniform_desc = DescSetLayout::new(
+			Rc::clone(&self.device),
+			vec![
+				DescriptorSetLayoutBinding {
+					binding: 0,
+					ty: DescriptorType::Buffer {
+						ty: BufferDescriptorType::Uniform,
+						format: BufferDescriptorFormat::Structured {
+							dynamic_offset: false,
+						},
+					},
+					count: 1,
+					stage_flags: ShaderStageFlags::FRAGMENT,
+					immutable_samplers: false,
+				}],
+		);
+		let uniform_desc = uniform_desc.create_desc_set(
+			self.uniform_desc_pool.as_mut().unwrap(),
+			"uniform",
+			Rc::clone(&self.device),
+		);
+
+		let uniform = Uniform::new(
+			Rc::clone(&self.device),
+			&self.core.adapter.memory_types,
+			buffer_data,
+			uniform_desc,
+			0,
+		);
+
+		let buffer_id = self.uniform_buffers.len();
+		self.uniform_buffers.push(uniform);
+		buffer_id
+	}
+
+	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, material_controller: &MaterialController) {
+		self.add_uniform_buffer(&[1.0, 0.0, 0.4, 1.0]);
+		let (vert_shader_id, frag_shader_id) = material_controller.pipeline_shader_map.get(&pipeline_type).unwrap();
+		let mut desc_layouts = vec![];
+		for ubo in &self.uniform_buffers {
+			desc_layouts.push(ubo.get_layout());
+		}
+
+		self.pipelines.push(GraphicsPipeline::new(
+			desc_layouts.into_iter(),
+			self.render_pass.render_pass.as_ref().unwrap(),
+			Rc::clone(&self.device),
+			material_controller.shader_map.get(vert_shader_id).unwrap(),
+			material_controller.shader_map.get(frag_shader_id).unwrap(),
+		));
+	}
+
+	pub fn update_pipeline(&mut self, ubo_ids: &[usize], pipeline_type: &PipelineType, material_controller: &MaterialController) {
+		let device = &self.device.borrow().device;
+		device.wait_idle().unwrap();
+
+		let mut desc_layouts = vec![];
+		for id in ubo_ids {
+			desc_layouts.push(self.uniform_buffers[*id].get_layout());
+		}
+
+		let (vert_shader_id, frag_shader_id) = material_controller.pipeline_shader_map.get(pipeline_type).unwrap();
+
+		let pipeline_idx = self.pipelines.iter().position(|pipe| &pipe.pipeline_type == pipeline_type).unwrap();
+
+		self.pipelines[pipeline_idx] = GraphicsPipeline::new(
+			desc_layouts.into_iter(),
+			self.render_pass.render_pass.as_ref().unwrap(),
+			Rc::clone(&self.device),
+			material_controller.shader_map.get(vert_shader_id).unwrap(),
+			material_controller.shader_map.get(frag_shader_id).unwrap(),
+		);
+	}
+
 	pub fn recreate_swapchain(&mut self, dimensions: Extent2D) {
 		let device = &self.device.borrow().device;
 		device.wait_idle().unwrap();
@@ -180,18 +210,16 @@ impl<B: Backend> Renderer<B> {
 
 		self.framebuffer_data = FramebufferData::new(Rc::clone(&self.device), self.swapchain.frame_queue_size, new_fb);
 
-		self.pipeline = GraphicsPipeline::new(
-			vec![self.uniform.get_layout()].into_iter(),
-			self.render_pass.render_pass.as_ref().unwrap(),
-			Rc::clone(&self.device),
-			self.config.vertex_shader_path.as_str(),
-			self.config.fragment_shader_path.as_str(),
-		);
+		for pipeline in &self.pipelines {
+			let pipe_type = pipeline.pipeline_type;
+			// &mut self.create_pipeline(&pipe_type);
+		}
 
 		self.viewport = self.swapchain.make_viewport();
 	}
 
-	pub fn draw(&mut self, mesh_ids: &[(u64, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], mesh_controller: &MeshController) {
+
+	pub fn draw(&mut self, render_objects: &[(u64, u64, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], mesh_controller: &MeshController, material_controller: &MaterialController) {
 		if self.recreate_swapchain {
 			self.recreate_swapchain(Extent2D { width: self.swapchain.extent.width, height: self.swapchain.extent.height });
 			self.recreate_swapchain = false;
@@ -211,6 +239,12 @@ impl<B: Backend> Renderer<B> {
 
 		let (framebuffer, command_pool, command_buffers, sem_image_presentation) = self.framebuffer_data.get_frame_data(frame_index);
 
+		if self.pipelines.len() == 0 {
+			return;
+		}
+
+		let pipeline = &self.pipelines[0];
+
 		unsafe {
 			let (mut cmd_buffer, mut fence) = match command_buffers.pop() {
 				Some((cmd_buffer, fence)) => (cmd_buffer, fence),
@@ -228,14 +262,8 @@ impl<B: Backend> Renderer<B> {
 			cmd_buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
 			cmd_buffer.set_viewports(0, iter::once(self.viewport.clone()));
 			cmd_buffer.set_scissors(0, iter::once(self.viewport.rect));
-			cmd_buffer.bind_graphics_pipeline(self.pipeline.pipeline.as_ref().unwrap());
-			/*cmd_buffer.bind_graphics_descriptor_sets(self.pipeline.pipeline_layout.as_ref().unwrap(),
-				0,
-				vec![
-					self.uniform.desc.as_ref().unwrap().set.as_ref().unwrap(),
-				].into_iter(),
-				iter::empty(),
-			);*/
+			cmd_buffer.bind_graphics_pipeline(pipeline.pipeline.as_ref().unwrap());
+
 
 			cmd_buffer.begin_render_pass(
 				self.render_pass.render_pass.as_ref().unwrap(),
@@ -252,10 +280,9 @@ impl<B: Backend> Renderer<B> {
 				SubpassContents::Inline,
 			);
 
-			for (mesh_id, transform) in mesh_ids.iter() {
+			for (mesh_id, material_id, transform) in render_objects.iter() {
 				let (buffer_id, amount_of_verts) = mesh_controller.get_mesh_data(mesh_id);
-
-				let model_transform = transform;
+				let ubo_id = material_controller.ubo_map.get(material_id).unwrap_or(&0).clone();
 
 				let mvp = MVP {
 					model: *transform,
@@ -264,18 +291,22 @@ impl<B: Backend> Renderer<B> {
 				};
 
 				let mvp_bytes = mvp.as_bytes();
-				let pipeline_layout = self.pipeline.pipeline_layout.as_ref().unwrap();
+				let pipeline_layout = pipeline.pipeline_layout.as_ref().unwrap();
 
 				cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffers[buffer_id as usize].get(), SubRange::WHOLE)));
 				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
+				let  sets = vec![self.uniform_buffers[ubo_id].desc.as_ref().unwrap().set.as_ref().unwrap()];
+				// for ubo in &self.uniform_buffers {
+				// 	sets.push(ubo.desc.as_ref().unwrap().set.as_ref().unwrap());
+				// }
 
-				cmd_buffer.bind_graphics_descriptor_sets(&pipeline_layout,
+				cmd_buffer.bind_graphics_descriptor_sets(pipeline.pipeline_layout.as_ref().unwrap(),
 					0,
-					vec![
-						self.uniform.desc.as_ref().unwrap().set.as_ref().unwrap(),
-					].into_iter(),
+					sets.into_iter(),
 					iter::empty(),
 				);
+				// cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::FRAGMENT, 0, &[]);
+
 				cmd_buffer.draw(0..amount_of_verts as u32, 0..1);
 			}
 
