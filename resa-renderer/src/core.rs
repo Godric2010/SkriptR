@@ -1,7 +1,9 @@
 use std::mem::ManuallyDrop;
 use std::ptr;
-use gfx_hal::{Backend, Instance, Limits};
+use gfx_hal::{Backend, Features, Instance, Limits};
 use gfx_hal::adapter::{Adapter, MemoryType, PhysicalDevice};
+use gfx_hal::format::{Format, ImageFeature};
+use gfx_hal::image::Tiling;
 use gfx_hal::prelude::{QueueFamily, Surface};
 use gfx_hal::queue::QueueGroup;
 use winit::window::Window;
@@ -100,5 +102,26 @@ impl <B: Backend> CoreDevice<B> {
             queues: gpu.queue_groups.pop().unwrap(),
             physical_device: adapter.physical_device,
         }
+    }
+    pub fn find_supported_format(&self, candidates: &[Format], tiling: Tiling, features: ImageFeature) -> Format{
+        let mut format: Option<Format> = None;
+        for candidate_format in candidates.iter() {
+
+            let format_properties = self.physical_device.format_properties(Some(candidate_format.clone()));
+            if tiling == Tiling::Linear && (format_properties.linear_tiling & features) == features{
+                format = Some(candidate_format.clone());
+                break;
+            }
+            else if tiling == Tiling::Optimal && (format_properties.optimal_tiling & features) == features {
+                format = Some(candidate_format.clone());
+                break;
+            }
+        }
+
+        if format.is_none(){
+            panic!("Cannot find format!")
+        }
+
+        format.unwrap()
     }
 }
