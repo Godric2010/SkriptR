@@ -26,32 +26,39 @@ fn main() {
 	world.borrow_mut().add_component(&camera_entity, camera);
 	world.borrow_mut().add_component(&camera_entity, transform);
 
-	let entity01 = world.borrow_mut().new_entity();
-
-	let transform = Transform { position: [0., 0., 0.0], angle: 0.0, scale: 1.0 };
-	let mut mesh_renderer = app.rendering.load_mesh(create_primitive_triangle());
 	let material = Material {
 		shader_id: 1,
 		pipeline_type: PipelineType::Opaque,
 		color: Color::new(255,0,0,255),
 	};
-	app.rendering.assign_material_to_mesh(&mut mesh_renderer, material);
-
-	world.borrow_mut().add_component(&entity01, transform);
-	world.borrow_mut().add_component(&entity01, mesh_renderer);
-
-
-	let entity02 = world.borrow_mut().new_entity();
-	let transform = Transform { position: [0.8, 0.2, 0.0], angle: 0.0, scale: 0.2 };
-	let mut mesh_renderer = app.rendering.load_mesh(create_primitive_quad());
 
 	let material02 = Material{
 		shader_id: 1,
 		pipeline_type: PipelineType::Opaque,
 		color: Color::new(0,0,0,255	),
 	};
+	let entity01 = world.borrow_mut().new_entity();
+	let transform = Transform { position: [0., 0., 0.0], angle: 0.0, scale: 1.0 };
+	let mut mesh_renderer = app.rendering.load_mesh(create_primitive_triangle());
+	app.rendering.assign_material_to_mesh(&mut mesh_renderer, material.clone());
+	world.borrow_mut().add_component(&entity01, transform);
+	world.borrow_mut().add_component(&entity01, mesh_renderer);
 
-	app.rendering.assign_material_to_mesh(&mut mesh_renderer, material02);
+	let entity03 = world.borrow_mut().new_entity();
+	let transform = Transform { position: [-0.2, 0., -1.0], angle: 0.0, scale: 1.0 };
+	let mut mesh_renderer = app.rendering.load_mesh(create_primitive_triangle());
+	app.rendering.assign_material_to_mesh(&mut mesh_renderer, material02.clone());
+	world.borrow_mut().add_component(&entity03, transform);
+	world.borrow_mut().add_component(&entity03, mesh_renderer);
+
+
+	let entity02 = world.borrow_mut().new_entity();
+	let transform = Transform { position: [0.8, 0.2, 0.0], angle: 0.0, scale: 0.2 };
+	let mut mesh_renderer = app.rendering.load_mesh(create_primitive_quad());
+
+
+
+	app.rendering.assign_material_to_mesh(&mut mesh_renderer, material02.clone());
 
 	world.borrow_mut().add_component(&entity02, transform);
 	world.borrow_mut().add_component(&entity02, mesh_renderer);

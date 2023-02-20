@@ -65,7 +65,7 @@ impl<B: Backend> Renderer<B> {
 							dynamic_offset: false,
 						},
 					},
-					count: 3,
+					count: 100,
 				}),
 				DescriptorPoolCreateFlags::empty(),
 			)
