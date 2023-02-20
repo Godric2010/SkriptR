@@ -6,10 +6,10 @@ use std::time::Instant;
 use gfx_hal::{Backend, Features};
 use gfx_hal::adapter::Adapter;
 use gfx_hal::buffer::{SubRange, Usage};
-use gfx_hal::command::{ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
+use gfx_hal::command::{ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
 use gfx_hal::device::Device;
 use gfx_hal::format::{Aspects, Format, ImageFeature};
-use gfx_hal::image::{Extent, Tiling};
+use gfx_hal::image::{Extent, FramebufferAttachment, Tiling, ViewCapabilities};
 use gfx_hal::memory::Properties;
 use gfx_hal::pool::CommandPool;
 use gfx_hal::prelude::PresentationSurface;
@@ -83,11 +83,17 @@ impl<B: Backend> Renderer<B> {
 			height: config.extent.height,
 		});
 		let depth_image = Renderer::<B>::create_depth_image(device.clone(), &core.adapter, swapchain.extent);
-		let render_pass = RenderPass::new(&swapchain, Rc::clone(&device));
+		let render_pass = RenderPass::new(&swapchain, &depth_image, Rc::clone(&device));
+
+		let framebuffer_attachments = vec![swapchain.framebuffer_attachment.clone(), FramebufferAttachment {
+			usage: gfx_hal::image::Usage::DEPTH_STENCIL_ATTACHMENT,
+			view_caps: ViewCapabilities::empty(),
+			format: depth_image.format.clone(),
+		}];
 		let framebuffer = unsafe {
 			device.borrow().device.create_framebuffer(
 				render_pass.render_pass.as_ref().unwrap(),
-				iter::once(swapchain.framebuffer_attachment.clone()),
+				framebuffer_attachments.into_iter(),
 				swapchain.extent).unwrap()
 		};
 		let framebuffer_data = FramebufferData::new(Rc::clone(&device), swapchain.frame_queue_size, framebuffer);
@@ -207,7 +213,7 @@ impl<B: Backend> Renderer<B> {
 
 		self.swapchain = Swapchain::new(&mut *self.core.surface, &*self.device.borrow(), dimensions);
 		self.depth_image = Renderer::<B>::create_depth_image(self.device.clone(), &self.core.adapter, self.swapchain.extent);
-		self.render_pass = RenderPass::new(&self.swapchain, Rc::clone(&self.device));
+		self.render_pass = RenderPass::new(&self.swapchain, &self.depth_image, Rc::clone(&self.device));
 
 		let new_fb = unsafe {
 			device.destroy_framebuffer(self.framebuffer_data.framebuffer.take().unwrap());
@@ -226,8 +232,7 @@ impl<B: Backend> Renderer<B> {
 		self.viewport = self.swapchain.make_viewport();
 	}
 
-	fn create_depth_image(device: Rc<RefCell<CoreDevice<B>>>, adapter: &CoreAdapter<B>, dimensions: Extent) -> Image<B>{
-
+	fn create_depth_image(device: Rc<RefCell<CoreDevice<B>>>, adapter: &CoreAdapter<B>, dimensions: Extent) -> Image<B> {
 		let depth_formats = [Format::D24UnormS8Uint, Format::D32SfloatS8Uint, Format::D32Sfloat];
 		let depth_format = device.borrow().find_supported_format(&depth_formats, Tiling::Optimal, ImageFeature::DEPTH_STENCIL_ATTACHMENT);
 		let depth_image = Image::new(device.clone(), adapter, dimensions, depth_format, Tiling::Optimal, gfx_hal::image::Usage::DEPTH_STENCIL_ATTACHMENT, Properties::DEVICE_LOCAL, Aspects::DEPTH, gfx_hal::image::Usage::SAMPLED);
@@ -284,14 +289,21 @@ impl<B: Backend> Renderer<B> {
 				self.render_pass.render_pass.as_ref().unwrap(),
 				framebuffer,
 				self.viewport.rect,
-				iter::once(RenderAttachmentInfo {
+				vec![RenderAttachmentInfo {
 					image_view: std::borrow::Borrow::borrow(&surface_image),
 					clear_value: ClearValue {
 						color: ClearColor {
 							float32: self.bg_color,
 						}
 					},
-				}),
+				},
+					RenderAttachmentInfo {
+						image_view: &self.depth_image.image_view,
+						clear_value: ClearValue {
+							depth_stencil: ClearDepthStencil { depth: 1.0, stencil: 0 }
+						},
+					},
+				].into_iter(),
 				SubpassContents::Inline,
 			);
 
@@ -310,7 +322,7 @@ impl<B: Backend> Renderer<B> {
 
 				cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffers[buffer_id as usize].get(), SubRange::WHOLE)));
 				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
-				let  sets = vec![self.uniform_buffers[ubo_id].desc.as_ref().unwrap().set.as_ref().unwrap()];
+				let sets = vec![self.uniform_buffers[ubo_id].desc.as_ref().unwrap().set.as_ref().unwrap()];
 				// for ubo in &self.uniform_buffers {
 				// 	sets.push(ubo.desc.as_ref().unwrap().set.as_ref().unwrap());
 				// }

@@ -7,7 +7,7 @@ use gfx_hal::{Backend, spec_const_list};
 use gfx_hal::device::Device;
 use gfx_hal::format::Format;
 use gfx_hal::pass::Subpass;
-use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Element, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
+use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Comparison, DepthStencilDesc, DepthTest, Element, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
 use glsl_to_spirv::ShaderType;
 use crate::core::CoreDevice;
 use crate::helper::MVP;
@@ -97,6 +97,12 @@ impl<B: Backend> GraphicsPipeline<B> {
 					mask: ColorMask::ALL,
 					blend: Some(BlendState::ALPHA),
 				});
+
+				pipeline_desc.depth_stencil = DepthStencilDesc{
+					depth: Some(DepthTest{ fun: Comparison::Less, write: true }),
+					depth_bounds: false,
+					stencil: None,
+				};
 
 				unsafe { device.create_graphics_pipeline(&pipeline_desc, None) }
 			};

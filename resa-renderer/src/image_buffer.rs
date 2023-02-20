@@ -32,6 +32,7 @@ pub struct Image<B: Backend> {
 	pub image_view: B::ImageView,
 	pub image: B::Image,
 	pub memory: B::Memory,
+	pub format: Format,
 }
 
 impl<B: Backend> ImageBuffer<B> {
@@ -201,6 +202,7 @@ impl<B: Backend> Image<B> {
 			image,
 			memory,
 			image_view,
+			format,
 		}
 	}
 }
