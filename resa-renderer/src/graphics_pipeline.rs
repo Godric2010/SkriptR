@@ -71,35 +71,13 @@ impl<B: Backend> GraphicsPipeline<B> {
 					main_pass: render_pass,
 				};
 
-				let vertex_buffers = vec![VertexBufferDesc {
-					binding: 0,
-					stride: size_of::<Vertex>() as u32,
-					rate: VertexInputRate::Vertex,
-				}];
-
-				let attributes = vec![
-					AttributeDesc {
-						location: 0,
-						binding: 0,
-						element: Element {
-							format: Format::Rg32Sfloat,
-							offset: 0,
-						},
-					},
-					// AttributeDesc {
-					// 	location: 1,
-					// 	binding: 0,
-					// 	element: Element {
-					// 		format: Format::Rg32Sfloat,
-					// 		offset: 12,
-					// 	},
-					// },
-				];
+				let vertex_buffers = Vertex::get_vertex_buffer_desc();
+				let vertex_attributes = Vertex::get_vertex_attributes();
 
 				let mut pipeline_desc = GraphicsPipelineDesc::new(
 					PrimitiveAssemblerDesc::Vertex {
 						buffers: &vertex_buffers,
-						attributes: &attributes,
+						attributes: &vertex_attributes,
 						input_assembler: InputAssemblerDesc {
 							primitive: Primitive::TriangleList,
 							with_adjacency: false,
