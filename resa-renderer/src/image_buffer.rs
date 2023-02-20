@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::iter;
 use std::rc::Rc;
 use gfx_hal::{Backend, buffer};
@@ -34,14 +35,14 @@ pub struct Image<B: Backend> {
 }
 
 impl<B: Backend> ImageBuffer<B> {
-	pub fn new(mut desc: DescSet<B>, img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>, adapter: CoreAdapter<B>, usage: buffer::Usage, device_ptr: &mut CoreDevice<B>, staging_pool: &mut B::CommandPool) -> Self {
-		let (buffer, dimensions, row_pitch, stride) = Buffer::new_texture(Rc::clone(&desc.layout.device), &mut device_ptr.device, img, &adapter, usage);
+	pub fn new(mut desc: DescSet<B>, img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>, adapter: &CoreAdapter<B>, usage: buffer::Usage, device_ptr:Rc<RefCell<CoreDevice<B>>>, staging_pool: &mut B::CommandPool) -> Self {
+		let (buffer, dimensions, row_pitch, stride) = Buffer::new_texture(Rc::clone(&desc.layout.device), &mut device_ptr.borrow_mut().device, img, &adapter, usage);
 
 		let buffer = Some(buffer);
 		let dimensions = Extent { width: dimensions.width, height: dimensions.height, depth: 1 };
-		let image = Image::new(device_ptr, adapter, dimensions, Format::Rgba8Srgb, Tiling::Optimal, Usage::TRANSFER_DST | Usage::SAMPLED, Properties::DEVICE_LOCAL, Aspects::COLOR);
+		let image = Image::new(device_ptr.clone(), &adapter, dimensions, Format::Rgba8Srgb, Tiling::Optimal, Usage::TRANSFER_DST | Usage::SAMPLED, Properties::DEVICE_LOCAL, Aspects::COLOR, Usage::SAMPLED);
 
-		let device = &mut device_ptr.device;
+		let device = &mut device_ptr.borrow_mut().device;
 		let image_buffer = unsafe {
 			let sampler = device.create_sampler(&SamplerDesc::new(Filter::Linear, WrapMode::Clamp)).expect(" Cannot create sampler!");
 
@@ -127,7 +128,7 @@ impl<B: Backend> ImageBuffer<B> {
 
 				command_buffer.finish();
 
-				device_ptr.queues.queues[0].submit(
+				device_ptr.borrow_mut().queues.queues[0].submit(
 					iter::once(&command_buffer),
 					iter::empty(),
 					iter::empty(),
@@ -149,10 +150,9 @@ impl<B: Backend> ImageBuffer<B> {
 }
 
 impl<B: Backend> Image<B> {
-	pub fn new(device_ptr: &mut CoreDevice<B>, adapter: CoreAdapter<B>, dimensions: Extent, format: Format, tiling: Tiling, usage: Usage, memory_properties: Properties, aspects: Aspects) -> Self {
-		let device = &mut device_ptr.device;
-		let kind = Kind::D3(dimensions.width, dimensions.height, dimensions.depth);
-
+	pub fn new(device_ptr: Rc<RefCell<CoreDevice<B>>>, adapter: &CoreAdapter<B>, dimensions: Extent, format: Format, tiling: Tiling, usage: Usage, memory_properties: Properties, aspects: Aspects, view_usage: Usage) -> Self {
+		let device = &device_ptr.borrow().device;
+		let kind = Kind::D2(dimensions.width, dimensions.height, 1, 1);
 		let mut image = unsafe {
 			device.create_image(
 				kind,
@@ -185,10 +185,13 @@ impl<B: Backend> Image<B> {
 				ViewKind::D2,
 				format,
 				Swizzle::NO,
-				Usage::SAMPLED,
+				view_usage,
 				SubresourceRange {
 					aspects,
-					..Default::default()
+					level_start: 0,
+					level_count: Some(1),
+					layer_start: 0,
+					layer_count: Some(1),
 				},
 			)
 		}

@@ -3,10 +3,14 @@ use std::{iter};
 use std::rc::Rc;
 use std::time::Instant;
 
-use gfx_hal::Backend;
+use gfx_hal::{Backend, Features};
+use gfx_hal::adapter::Adapter;
 use gfx_hal::buffer::{SubRange, Usage};
 use gfx_hal::command::{ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
 use gfx_hal::device::Device;
+use gfx_hal::format::{Aspects, Format, ImageFeature};
+use gfx_hal::image::{Extent, Tiling};
+use gfx_hal::memory::Properties;
 use gfx_hal::pool::CommandPool;
 use gfx_hal::prelude::PresentationSurface;
 use gfx_hal::pso::{BufferDescriptorFormat, BufferDescriptorType, ColorValue, DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ShaderStageFlags, Viewport};
@@ -15,11 +19,12 @@ use gfx_hal::window::Extent2D;
 use winit::window::Window;
 
 use crate::buffer::Buffer;
-use crate::core::{Core, CoreDevice};
+use crate::core::{Core, CoreAdapter, CoreDevice};
 use crate::descriptors::DescSetLayout;
 use crate::framebuffer::FramebufferData;
 use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
+use crate::image_buffer::Image;
 use crate::material_controller::MaterialController;
 use crate::mesh_controller::MeshController;
 use crate::RendererConfig;
@@ -40,6 +45,7 @@ pub(crate) struct Renderer<B: Backend> {
 	vertex_buffers: Vec<Buffer<B>>,
 	uniform_buffers: Vec<Uniform<B>>,
 	uniform_desc_pool: Option<B::DescriptorPool>,
+	depth_image: Image<B>,
 	pub recreate_swapchain: bool,
 	bg_color: ColorValue,
 	frames_drawn: usize,
@@ -76,6 +82,7 @@ impl<B: Backend> Renderer<B> {
 			width: config.extent.width,
 			height: config.extent.height,
 		});
+		let depth_image = Renderer::<B>::create_depth_image(device.clone(), &core.adapter, swapchain.extent);
 		let render_pass = RenderPass::new(&swapchain, Rc::clone(&device));
 		let framebuffer = unsafe {
 			device.borrow().device.create_framebuffer(
@@ -98,7 +105,7 @@ impl<B: Backend> Renderer<B> {
 			vertex_buffers: vec![],
 			uniform_buffers: vec![],
 			uniform_desc_pool,
-
+			depth_image,
 			recreate_swapchain: true,
 			bg_color: [0.1, 0.1, 0.1, 1.0],
 			frames_drawn: 0,
@@ -199,6 +206,7 @@ impl<B: Backend> Renderer<B> {
 		device.wait_idle().unwrap();
 
 		self.swapchain = Swapchain::new(&mut *self.core.surface, &*self.device.borrow(), dimensions);
+		self.depth_image = Renderer::<B>::create_depth_image(self.device.clone(), &self.core.adapter, self.swapchain.extent);
 		self.render_pass = RenderPass::new(&self.swapchain, Rc::clone(&self.device));
 
 		let new_fb = unsafe {
@@ -218,6 +226,13 @@ impl<B: Backend> Renderer<B> {
 		self.viewport = self.swapchain.make_viewport();
 	}
 
+	fn create_depth_image(device: Rc<RefCell<CoreDevice<B>>>, adapter: &CoreAdapter<B>, dimensions: Extent) -> Image<B>{
+
+		let depth_formats = [Format::D24UnormS8Uint, Format::D32SfloatS8Uint, Format::D32Sfloat];
+		let depth_format = device.borrow().find_supported_format(&depth_formats, Tiling::Optimal, ImageFeature::DEPTH_STENCIL_ATTACHMENT);
+		let depth_image = Image::new(device.clone(), adapter, dimensions, depth_format, Tiling::Optimal, gfx_hal::image::Usage::DEPTH_STENCIL_ATTACHMENT, Properties::DEVICE_LOCAL, Aspects::DEPTH, gfx_hal::image::Usage::SAMPLED);
+		depth_image
+	}
 
 	pub fn draw(&mut self, render_objects: &[(u64, u64, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], mesh_controller: &MeshController, material_controller: &MaterialController) {
 		if self.recreate_swapchain {
