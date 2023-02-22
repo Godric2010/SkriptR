@@ -99,7 +99,7 @@ impl<B: Backend> GraphicsPipeline<B> {
 				});
 
 				pipeline_desc.depth_stencil = DepthStencilDesc{
-					depth: Some(DepthTest{ fun: Comparison::Less, write: true }),
+					depth: Some(DepthTest{ fun: Comparison::LessEqual, write: true }),
 					depth_bounds: false,
 					stencil: None,
 				};

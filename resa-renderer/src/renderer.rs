@@ -63,7 +63,7 @@ impl<B: Backend> Renderer<B> {
 
 		let uniform_desc_pool = unsafe {
 			device.borrow().device.create_descriptor_pool(
-				3,
+				9,
 				iter::once(DescriptorRangeDesc {
 					ty: DescriptorType::Buffer {
 						ty: BufferDescriptorType::Uniform,
@@ -284,26 +284,26 @@ impl<B: Backend> Renderer<B> {
 			cmd_buffer.set_scissors(0, iter::once(self.viewport.rect));
 			cmd_buffer.bind_graphics_pipeline(pipeline.pipeline.as_ref().unwrap());
 
-
+			let attachments = vec![RenderAttachmentInfo {
+				image_view: std::borrow::Borrow::borrow(&surface_image),
+				clear_value: ClearValue {
+					color: ClearColor {
+						float32: self.bg_color,
+					},
+				},
+			},
+				RenderAttachmentInfo {
+					image_view: self.depth_image.image_view.as_ref().unwrap(),
+					clear_value: ClearValue {
+						depth_stencil: ClearDepthStencil { depth: 1.0, stencil: 0 }
+					},
+				},
+			];
 			cmd_buffer.begin_render_pass(
 				self.render_pass.render_pass.as_ref().unwrap(),
 				framebuffer,
 				self.viewport.rect,
-				vec![RenderAttachmentInfo {
-					image_view: std::borrow::Borrow::borrow(&surface_image),
-					clear_value: ClearValue {
-						color: ClearColor {
-							float32: self.bg_color,
-						}
-					},
-				},
-					RenderAttachmentInfo {
-						image_view: &self.depth_image.image_view,
-						clear_value: ClearValue {
-							depth_stencil: ClearDepthStencil { depth: 1.0, stencil: 0 }
-						},
-					},
-				].into_iter(),
+				attachments.into_iter(),
 				SubpassContents::Inline,
 			);
 

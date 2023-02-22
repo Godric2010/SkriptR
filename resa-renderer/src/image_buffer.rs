@@ -29,10 +29,11 @@ pub struct ImageBuffer<B: Backend> {
 }
 
 pub struct Image<B: Backend> {
-	pub image_view: B::ImageView,
-	pub image: B::Image,
-	pub memory: B::Memory,
+	pub image_view: Option<B::ImageView>,
+	pub image: Option<B::Image>,
+	pub memory: Option<B::Memory>,
 	pub format: Format,
+	device: Rc<RefCell<CoreDevice<B>>>
 }
 
 impl<B: Backend> ImageBuffer<B> {
@@ -51,7 +52,7 @@ impl<B: Backend> ImageBuffer<B> {
 				binding: 0,
 				array_offset: 0,
 				descriptors: iter::once(Descriptor::Image(
-					&image.image_view,
+					image.image_view.as_ref().unwrap(),
 					Layout::ShaderReadOnlyOptimal,
 				)),
 			},
@@ -75,7 +76,7 @@ impl<B: Backend> ImageBuffer<B> {
 				let image_barrier = Barrier::Image {
 					states: (Access::empty(), Layout::Undefined)
 						..(Access::TRANSFER_WRITE, Layout::TransferDstOptimal),
-					target: &image.image,
+					target: image.image.as_ref().unwrap(),
 					families: None,
 					range: SubresourceRange {
 						aspects: Aspects::COLOR,
@@ -90,7 +91,7 @@ impl<B: Backend> ImageBuffer<B> {
 
 				command_buffer.copy_buffer_to_image(
 					buffer.as_ref().unwrap().get(),
-					&image.image,
+					image.image.as_ref().unwrap(),
 					Layout::TransferDstOptimal,
 					iter::once(BufferImageCopy {
 						buffer_offset: 0,
@@ -113,7 +114,7 @@ impl<B: Backend> ImageBuffer<B> {
 				let image_barrier = Barrier::Image {
 					states: (Access::TRANSFER_WRITE, Layout::TransferDstOptimal)
 						..(Access::SHADER_READ, Layout::ShaderReadOnlyOptimal),
-					target: &image.image,
+					target: image.image.as_ref().unwrap(),
 					families: None,
 					range: SubresourceRange {
 						aspects: Aspects::COLOR,
@@ -178,7 +179,7 @@ impl<B: Backend> Image<B> {
 			.unwrap()
 			.into();
 
-		let memory = unsafe { device.allocate_memory(device_type, req.size).unwrap() };
+		let memory =  unsafe { device.allocate_memory(device_type, req.size).unwrap() };
 		unsafe { device.bind_image_memory(&memory, 0, &mut image).unwrap(); }
 		let image_view = unsafe {
 			device.create_image_view(
@@ -199,10 +200,22 @@ impl<B: Backend> Image<B> {
 			.unwrap();
 
 		Image {
-			image,
-			memory,
-			image_view,
+			image: Some(image),
+			memory: Some(memory),
+			image_view: Some(image_view),
 			format,
+			device: device_ptr.clone(),
+		}
+	}
+}
+
+impl<B: Backend> Drop for Image<B> {
+	fn drop(&mut self) {
+		let device = &self.device.borrow().device;
+		unsafe {
+			device.destroy_image_view(self.image_view.take().unwrap());
+			device.destroy_image(self.image.take().unwrap());
+			device.free_memory(self.memory.take().unwrap());
 		}
 	}
 }
