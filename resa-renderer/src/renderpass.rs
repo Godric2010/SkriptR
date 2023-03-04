@@ -35,8 +35,14 @@ impl<B: Backend> RenderPass<B> {
 			let depth_attachment = Attachment {
 				format: Some(depth_image.format),
 				samples: 1,
-				ops: AttachmentOps::DONT_CARE,
-				stencil_ops: AttachmentOps::DONT_CARE,
+				ops: AttachmentOps{
+					load: AttachmentLoadOp::Clear,
+					store: AttachmentStoreOp::Store
+				},
+				stencil_ops: AttachmentOps{
+					load: AttachmentLoadOp::Clear,
+					store: AttachmentStoreOp::DontCare
+				},
 				layouts: Layout::Undefined..Layout::DepthStencilAttachmentOptimal,
 			};
 
