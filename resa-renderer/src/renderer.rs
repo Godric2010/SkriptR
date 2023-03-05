@@ -3,8 +3,7 @@ use std::{iter};
 use std::rc::Rc;
 use std::time::Instant;
 
-use gfx_hal::{Backend, Features};
-use gfx_hal::adapter::Adapter;
+use gfx_hal::{Backend, IndexType};
 use gfx_hal::buffer::{SubRange, Usage};
 use gfx_hal::command::{ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
 use gfx_hal::device::Device;
@@ -32,6 +31,7 @@ use crate::renderpass::RenderPass;
 use crate::swapchain::Swapchain;
 use crate::uniform::Uniform;
 use crate::vertex::Vertex;
+use crate::mesh::Mesh;
 
 pub(crate) struct Renderer<B: Backend> {
 	config: RendererConfig,
@@ -43,6 +43,7 @@ pub(crate) struct Renderer<B: Backend> {
 	viewport: Viewport,
 	pipelines: Vec<GraphicsPipeline<B>>,
 	vertex_buffers: Vec<Buffer<B>>,
+	index_buffers: Vec<Buffer<B>>,
 	uniform_buffers: Vec<Uniform<B>>,
 	uniform_desc_pool: Option<B::DescriptorPool>,
 	depth_image: Image<B>,
@@ -109,6 +110,7 @@ impl<B: Backend> Renderer<B> {
 			viewport,
 			pipelines: vec![],
 			vertex_buffers: vec![],
+			index_buffers: vec![],
 			uniform_buffers: vec![],
 			uniform_desc_pool,
 			depth_image,
@@ -120,15 +122,24 @@ impl<B: Backend> Renderer<B> {
 		}
 	}
 
-	pub fn add_vertex_buffer(&mut self, vertices: &[Vertex]) -> usize {
+	pub fn add_vertex_and_index_buffer(&mut self, mesh: &Mesh) -> usize {
 		let vertex_buffer = Buffer::new::<Vertex>(
 			Rc::clone(&self.device),
-			vertices,
+			&mesh.vertices,
 			Usage::VERTEX,
 			&self.core.adapter.memory_types,
 		);
+
+		let index_buffer = Buffer::new::<u16>(
+			Rc::clone(&self.device),
+			&mesh.indices,
+			Usage::INDEX,
+			&self.core.adapter.memory_types,
+		);
+
 		let buffer_id = self.vertex_buffers.len();
 		self.vertex_buffers.push(vertex_buffer);
+		self.index_buffers.push(index_buffer);
 		buffer_id
 	}
 
@@ -308,7 +319,7 @@ impl<B: Backend> Renderer<B> {
 			);
 
 			for (mesh_id, material_id, transform) in render_objects.iter() {
-				let (buffer_id, amount_of_verts) = mesh_controller.get_mesh_data(mesh_id);
+				let (buffer_id, amount_of_verts, amount_of_indices) = mesh_controller.get_mesh_data(mesh_id);
 				let ubo_id = material_controller.ubo_map.get(material_id).unwrap_or(&0).clone();
 
 				let mvp = MVP {
@@ -321,20 +332,17 @@ impl<B: Backend> Renderer<B> {
 				let pipeline_layout = pipeline.pipeline_layout.as_ref().unwrap();
 
 				cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffers[buffer_id as usize].get(), SubRange::WHOLE)));
+				cmd_buffer.bind_index_buffer( self.index_buffers[buffer_id as usize].get(), SubRange::WHOLE, IndexType::U16);
 				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
 				let sets = vec![self.uniform_buffers[ubo_id].desc.as_ref().unwrap().set.as_ref().unwrap()];
-				// for ubo in &self.uniform_buffers {
-				// 	sets.push(ubo.desc.as_ref().unwrap().set.as_ref().unwrap());
-				// }
 
 				cmd_buffer.bind_graphics_descriptor_sets(pipeline.pipeline_layout.as_ref().unwrap(),
 					0,
 					sets.into_iter(),
 					iter::empty(),
 				);
-				// cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::FRAGMENT, 0, &[]);
 
-				cmd_buffer.draw(0..amount_of_verts as u32, 0..1);
+				cmd_buffer.draw_indexed(0..amount_of_indices ,0, 0..1);
 			}
 
 
