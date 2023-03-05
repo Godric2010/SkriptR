@@ -94,20 +94,7 @@ impl ResaApp {
 				}
 				Event::MainEventsCleared => self.window.request_redraw(),
 				Event::RedrawRequested(_) => {
-
-					/* for entity in &mut scene {
-						 entity.update()
-					 }*/
-
 					self.rendering.render(&Rc::clone(&self.world));
-
-
-					// self.rendering.render();
-					// if loop_runs % 10 == 0 {
-					// 	loop_runs = 0;
-					//
-					// 	println!("{}", self.rendering.borrow_mut().get_fps());
-					// }
 				}
 				_ => (),
 			}

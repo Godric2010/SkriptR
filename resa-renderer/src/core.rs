@@ -1,6 +1,6 @@
 use std::mem::ManuallyDrop;
 use std::ptr;
-use gfx_hal::{Backend, Features, Instance, Limits};
+use gfx_hal::{Backend, Instance, Limits};
 use gfx_hal::adapter::{Adapter, MemoryType, PhysicalDevice};
 use gfx_hal::format::{Format, ImageFeature};
 use gfx_hal::image::Tiling;

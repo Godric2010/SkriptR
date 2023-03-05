@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use winit::dpi::PhysicalSize;
 use winit::window::{Window};
 use crate::material::Material;

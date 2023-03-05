@@ -319,7 +319,7 @@ impl<B: Backend> Renderer<B> {
 			);
 
 			for (mesh_id, material_id, transform) in render_objects.iter() {
-				let (buffer_id, amount_of_verts, amount_of_indices) = mesh_controller.get_mesh_data(mesh_id);
+				let (buffer_id, amount_of_indices) = mesh_controller.get_mesh_data(mesh_id);
 				let ubo_id = material_controller.ubo_map.get(material_id).unwrap_or(&0).clone();
 
 				let mvp = MVP {

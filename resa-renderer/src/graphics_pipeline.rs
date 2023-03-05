@@ -1,14 +1,11 @@
 use std::cell::RefCell;
-use std::{fs, iter};
+use std::{iter};
 use std::mem::size_of;
-use std::path::Path;
 use std::rc::Rc;
 use gfx_hal::{Backend, spec_const_list};
 use gfx_hal::device::Device;
-use gfx_hal::format::Format;
 use gfx_hal::pass::Subpass;
-use gfx_hal::pso::{AttributeDesc, BlendState, ColorBlendDesc, ColorMask, Comparison, DepthStencilDesc, DepthTest, Element, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
-use glsl_to_spirv::ShaderType;
+use gfx_hal::pso::{BlendState, ColorBlendDesc, ColorMask, Comparison, DepthStencilDesc, DepthTest, Element, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
 use crate::core::CoreDevice;
 use crate::helper::MVP;
 use crate::vertex::Vertex;
