@@ -65,7 +65,7 @@ impl RenderingSystem {
 		self.frames_drawn += 1;
 		if self.frames_drawn % 10 == 0 {
 			self.frames_drawn = 0;
-			println!("{}", self.resa_renderer.get_fps());
+			// println!("{}", self.resa_renderer.get_fps());
 		}
 	}
 

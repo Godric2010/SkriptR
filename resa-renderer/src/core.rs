@@ -1,7 +1,8 @@
+use std::collections::{BinaryHeap, HashMap};
 use std::mem::ManuallyDrop;
 use std::ptr;
 use gfx_hal::{Backend, Instance, Limits};
-use gfx_hal::adapter::{Adapter, MemoryType, PhysicalDevice};
+use gfx_hal::adapter::{Adapter, DeviceType, MemoryType, PhysicalDevice};
 use gfx_hal::format::{Format, ImageFeature};
 use gfx_hal::image::Tiling;
 use gfx_hal::prelude::{QueueFamily, Surface};
@@ -58,9 +59,30 @@ pub struct CoreAdapter<B: Backend> {
 
 impl<B: Backend> CoreAdapter<B> {
     pub fn new(adapters: &mut Vec<Adapter<B>>) -> Self {
-        // TODO: Add komplex adapter choosing logic here!
 
-        CoreAdapter::<B>::new_adapter(adapters.remove(0))
+        let mut adapter_map = HashMap::<u8, usize>::new();
+        let mut adapter_prio = BinaryHeap::<u8>::new();
+        for (index, adapter) in adapters.iter().enumerate() {
+            let name = &adapter.info.name;
+            let adapter_type = &adapter.info.device_type;
+            println!("GPU {} at index {}", name, index);
+            let type_value: u8 = match adapter_type{
+                DeviceType::Other => 0,
+                DeviceType::IntegratedGpu => 3,
+                DeviceType::DiscreteGpu => 4,
+                DeviceType::VirtualGpu => 2,
+                DeviceType::Cpu => 1,
+            };
+            adapter_map.insert(type_value.clone(), index);
+            adapter_prio.push(type_value.clone());
+        }
+
+        let highest_prio = adapter_prio.pop().unwrap();
+        let adapter_index = adapter_map.get(&highest_prio).unwrap();
+
+        println!("Selected GPU at index {}", adapter_index);
+
+        CoreAdapter::<B>::new_adapter(adapters.remove(adapter_index.clone()))
     }
 
     fn new_adapter(adapter: Adapter<B>) -> Self {
