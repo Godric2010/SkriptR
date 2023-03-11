@@ -1,7 +1,5 @@
-use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::rc::Rc;
-use serde::__private::de::Borrowed;
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
@@ -9,6 +7,7 @@ use winit::window::{WindowBuilder, Window};
 use resa_ecs::world::World;
 use resa_renderer::RendererConfig;
 use crate::rendering::RenderingSystem;
+use crate::resource_loader::ResourceLoader;
 
 #[allow(dead_code)]
 pub struct ResaApp {
@@ -19,11 +18,13 @@ pub struct ResaApp {
 	pub window: Window,
 	pub rendering: RenderingSystem,
 	pub world: Rc<RefCell<World>>,
+	pub resource_loader: ResourceLoader,
 }
 
 impl ResaApp {
 	pub fn new(name: &str, width: u32, height: u32) -> Option<Self> {
 		let event_loop = EventLoop::new();
+		let resource_loader = ResourceLoader::new()?;
 
 		let primary_monitor = event_loop.primary_monitor()?;
 
@@ -43,10 +44,10 @@ impl ResaApp {
 			}
 		};
 
+		let shader_refs = resource_loader.load_all_shaders()?;
 		let renderer = RenderingSystem::new(&window, RendererConfig {
 			extent: physical_size.clone(),
-			vertex_shader_path: "./src/rendering/shaders/base.vert".to_string(),
-			fragment_shader_path: "./src/rendering/shaders/base.frag".to_string(),
+			shaders: shader_refs,
 		});
 
 		let world = Rc::new(RefCell::new(World::new()));
@@ -59,6 +60,7 @@ impl ResaApp {
 			window,
 			rendering: renderer,
 			world,
+			resource_loader,
 		})
 	}
 

@@ -1,3 +1,4 @@
+use gfx_hal::window::Extent2D;
 use winit::dpi::PhysicalSize;
 use winit::window::{Window};
 use crate::material::Material;
@@ -5,6 +6,7 @@ use crate::material_controller::MaterialController;
 use crate::mesh::Mesh;
 use crate::mesh_controller::MeshController;
 use crate::renderer::Renderer;
+use crate::shader::ShaderRef;
 
 mod renderer;
 mod core;
@@ -22,12 +24,12 @@ mod mesh_controller;
 pub mod material;
 mod helper;
 mod material_controller;
+pub mod shader;
 
 
 pub struct RendererConfig {
 	pub extent: PhysicalSize<u32>,
-	pub vertex_shader_path: String,
-	pub fragment_shader_path: String,
+	pub shaders: Vec<ShaderRef>,
 }
 
 
@@ -40,10 +42,12 @@ pub struct ResaRenderer {
 impl ResaRenderer {
 	/// Create a new instance of the renderer
 	pub fn new(window: &Window, config: RendererConfig) -> Self {
-		let material_controller = MaterialController::new();
+
+		let extent = Extent2D{width: config.extent.width, height: config.extent.height};
+		let material_controller = MaterialController::new(config.shaders);
 		let pipe_types = material_controller.get_registred_pipeline_types();
 
-		let mut renderer = Renderer::new(window, config);
+		let mut renderer = Renderer::new(window, extent);
 		for pipeline_type in pipe_types {
 			renderer.create_pipeline(pipeline_type, &material_controller);
 		}

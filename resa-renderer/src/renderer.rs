@@ -34,7 +34,6 @@ use crate::vertex::Vertex;
 use crate::mesh::Mesh;
 
 pub(crate) struct Renderer<B: Backend> {
-	config: RendererConfig,
 	core: Core<B>,
 	device: Rc<RefCell<CoreDevice<B>>>,
 	swapchain: Swapchain,
@@ -54,7 +53,7 @@ pub(crate) struct Renderer<B: Backend> {
 }
 
 impl<B: Backend> Renderer<B> {
-	pub(crate) fn new(window: &Window, config: RendererConfig) -> Self {
+	pub(crate) fn new(window: &Window, extent: Extent2D) -> Self {
 
 		// Create the connection between code and gpu.
 		let mut core = Core::<B>::create(&window).unwrap();
@@ -79,10 +78,7 @@ impl<B: Backend> Renderer<B> {
 		}.ok();
 
 		// Create swapchain and render pass and pipelines
-		let swapchain = Swapchain::new(&mut *core.surface, &*device.borrow(), Extent2D {
-			width: config.extent.width,
-			height: config.extent.height,
-		});
+		let swapchain = Swapchain::new(&mut *core.surface, &*device.borrow(), extent);
 		let depth_image = Renderer::<B>::create_depth_image(device.clone(), &core.adapter, swapchain.extent);
 		let render_pass = RenderPass::new(&swapchain, &depth_image, Rc::clone(&device));
 
@@ -101,7 +97,6 @@ impl<B: Backend> Renderer<B> {
 		let viewport = swapchain.make_viewport();
 
 		Renderer {
-			config,
 			core,
 			device,
 			swapchain,
@@ -181,7 +176,7 @@ impl<B: Backend> Renderer<B> {
 
 	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, material_controller: &MaterialController) {
 		self.add_uniform_buffer(&[1.0, 0.0, 0.4, 1.0]);
-		let (vert_shader_id, frag_shader_id) = material_controller.pipeline_shader_map.get(&pipeline_type).unwrap();
+		let shader_ref = material_controller.get_pipeline_shaders(&pipeline_type).unwrap();
 		let mut desc_layouts = vec![];
 		for ubo in &self.uniform_buffers {
 			desc_layouts.push(ubo.get_layout());
@@ -191,8 +186,8 @@ impl<B: Backend> Renderer<B> {
 			desc_layouts.into_iter(),
 			self.render_pass.render_pass.as_ref().unwrap(),
 			Rc::clone(&self.device),
-			material_controller.shader_map.get(vert_shader_id).unwrap(),
-			material_controller.shader_map.get(frag_shader_id).unwrap(),
+			&shader_ref.vertex.clone(),
+			&shader_ref.fragment.clone(),
 		));
 	}
 
@@ -205,7 +200,7 @@ impl<B: Backend> Renderer<B> {
 			desc_layouts.push(self.uniform_buffers[*id].get_layout());
 		}
 
-		let (vert_shader_id, frag_shader_id) = material_controller.pipeline_shader_map.get(pipeline_type).unwrap();
+		let shader_ref = material_controller.get_pipeline_shaders(pipeline_type).unwrap();
 
 		let pipeline_idx = self.pipelines.iter().position(|pipe| &pipe.pipeline_type == pipeline_type).unwrap();
 
@@ -213,8 +208,8 @@ impl<B: Backend> Renderer<B> {
 			desc_layouts.into_iter(),
 			self.render_pass.render_pass.as_ref().unwrap(),
 			Rc::clone(&self.device),
-			material_controller.shader_map.get(vert_shader_id).unwrap(),
-			material_controller.shader_map.get(frag_shader_id).unwrap(),
+			&shader_ref.vertex.clone(),
+			&shader_ref.fragment.clone(),
 		);
 	}
 

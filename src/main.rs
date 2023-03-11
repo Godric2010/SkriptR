@@ -10,6 +10,7 @@ use resa_renderer::material::{Color, Material};
 
 mod rendering;
 mod resa_app;
+mod resource_loader;
 
 
 fn main() {
