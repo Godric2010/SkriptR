@@ -16,7 +16,7 @@ pub struct ResaApp {
 	pub physical_size: PhysicalSize<u32>,
 	pub event_loop: EventLoop<()>,
 	pub window: Window,
-	pub rendering: RenderingSystem,
+	pub rendering: Rc<RefCell<RenderingSystem>>,
 	pub world: Rc<RefCell<World>>,
 	pub resource_loader: ResourceLoader,
 }
@@ -24,7 +24,7 @@ pub struct ResaApp {
 impl ResaApp {
 	pub fn new(name: &str, width: u32, height: u32) -> Option<Self> {
 		let event_loop = EventLoop::new();
-		let resource_loader = ResourceLoader::new()?;
+		let mut resource_loader = ResourceLoader::new()?;
 
 		let primary_monitor = event_loop.primary_monitor()?;
 
@@ -45,10 +45,14 @@ impl ResaApp {
 		};
 
 		let shader_refs = resource_loader.load_all_shaders()?;
-		let renderer = RenderingSystem::new(&window, RendererConfig {
+		let renderer = Rc::new(RefCell::new(RenderingSystem::new(&window, RendererConfig {
 			extent: physical_size.clone(),
 			shaders: shader_refs,
-		});
+		})));
+
+
+		let renderer_binding = renderer.clone();
+		resource_loader.set_image_cb(move |data|renderer_binding.borrow().register_texture(data));
 
 		let world = Rc::new(RefCell::new(World::new()));
 
@@ -85,18 +89,18 @@ impl ResaApp {
 					}
 					WindowEvent::Resized(dims) => {
 						self.physical_size = PhysicalSize::new(dims.width, dims.height);
-					    self.rendering.set_dirty();
+						self.rendering.borrow_mut().set_dirty();
 					}
 					WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
 						// set new surface scale here!
 
-						self.rendering.set_dirty();
+						self.rendering.borrow_mut().set_dirty();
 					}
 					_ => (),
 				}
 				Event::MainEventsCleared => self.window.request_redraw(),
 				Event::RedrawRequested(_) => {
-					self.rendering.render(&Rc::clone(&self.world));
+					self.rendering.borrow_mut().render(&Rc::clone(&self.world));
 				}
 				_ => (),
 			}

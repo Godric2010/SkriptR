@@ -2,9 +2,11 @@ use std::{env, fs};
 use std::collections::HashMap;
 use std::path::{Path};
 use resa_renderer::shader::ShaderRef;
+use crate::Event::Event;
 
 pub struct ResourceLoader {
 	resources_path: String,
+	register_image_cb: Event<Vec<u8>, usize>,
 }
 
 impl ResourceLoader {
@@ -18,7 +20,12 @@ impl ResourceLoader {
 
 		Some(Self {
 			resources_path: ressource_directory.as_path().to_str().unwrap().to_string(),
+			register_image_cb: Event::new(),
 		})
+	}
+
+	pub(crate) fn set_image_cb(&mut self, cb: impl Fn(Vec<u8>) -> usize + 'static){
+		self.register_image_cb.add_listener(cb);
 	}
 
 	pub(crate) fn load_all_shaders(&self) -> Option<Vec<ShaderRef>> {
@@ -60,5 +67,23 @@ impl ResourceLoader {
 			shaders.push(shader_ref);
 		}
 		Some(shaders)
+	}
+
+
+	pub fn load_image(&self, image_file_name: &str) -> Option<usize>{
+		let image_path = self.resources_path.clone() + "/"+ image_file_name;
+		if !fs::metadata(&image_path).is_ok(){
+			return None;
+		}
+
+		let image_bytes = match fs::read(Path::new(&image_path)){
+			Ok(bytes) => bytes,
+			Err(e) => {
+				println!("Could not read file {}", image_file_name);
+				return None;
+			}
+		};
+
+		Some(self.register_image_cb.execute(image_bytes))
 	}
 }

@@ -74,8 +74,13 @@ impl RenderingSystem {
 		MeshRenderer::new(mesh_id)
 	}
 
-	pub fn assign_material_to_mesh(&mut self, mesh_renderer: &mut MeshRenderer, material: Material){
+	pub fn assign_material_to_mesh(&mut self, mesh_renderer: &mut MeshRenderer, material: Material) {
 		let material_id = self.resa_renderer.register_materials(&[material])[0];
 		mesh_renderer.material_id = Some(material_id);
+	}
+
+	pub fn register_texture(&self, bytes: Vec<u8>) -> usize {
+		/*self.resa_renderer.*/
+		1
 	}
 }
