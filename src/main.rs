@@ -12,6 +12,7 @@ mod rendering;
 mod resa_app;
 mod resource_loader;
 mod Event;
+mod test_anim;
 
 
 fn main() {

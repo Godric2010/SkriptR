@@ -1,13 +1,17 @@
+use std::arch::aarch64::uint32x2_t;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::{Instant, SystemTime};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{WindowBuilder, Window};
+use resa_ecs::entity::Entity;
 use resa_ecs::world::World;
 use resa_renderer::RendererConfig;
 use crate::rendering::RenderingSystem;
 use crate::resource_loader::ResourceLoader;
+use crate::test_anim::rotate_entity;
 
 #[allow(dead_code)]
 pub struct ResaApp {
@@ -75,12 +79,9 @@ impl ResaApp {
 
 	#[allow(unused)]
 	pub fn run_window_loop(mut self) {
-		let start_time = std::time::Instant::now();
-		let mut anim = 0.0;
-		let mut loop_runs = 0;
+		let system_time = Instant::now();
+		let mut last_time = 0.0;
 		self.event_loop.run(move |event, _, control_flow| {
-			loop_runs += 1;
-			anim = start_time.elapsed().as_secs_f32().sin() * 0.5 + 0.5;
 			match event {
 				Event::WindowEvent { event, .. } => match event {
 					WindowEvent::CloseRequested => {
@@ -100,6 +101,12 @@ impl ResaApp {
 				}
 				Event::MainEventsCleared => self.window.request_redraw(),
 				Event::RedrawRequested(_) => {
+					let current_time = system_time.elapsed().as_secs_f64();
+					let delta_time = (current_time - last_time);
+					last_time = current_time;
+					let entity: Entity = Entity(4);
+					rotate_entity(&Rc::clone(&self.world), &entity, &delta_time );
+
 					self.rendering.borrow_mut().render(&Rc::clone(&self.world));
 				}
 				_ => (),

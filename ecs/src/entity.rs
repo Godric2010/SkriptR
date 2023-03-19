@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Entity(u64);
+pub struct Entity(pub u64);
 
 /// Keeps track of entities in the world, as well as creates and destroys them.
 pub (crate) struct EntityGenerator{
