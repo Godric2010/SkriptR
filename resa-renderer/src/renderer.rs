@@ -10,11 +10,12 @@ use gfx_hal::device::Device;
 use gfx_hal::format::{Aspects, Format, ImageFeature};
 use gfx_hal::image::{Extent, FramebufferAttachment, Tiling, ViewCapabilities};
 use gfx_hal::memory::Properties;
-use gfx_hal::pool::CommandPool;
+use gfx_hal::pool::{CommandPool, CommandPoolCreateFlags};
 use gfx_hal::prelude::PresentationSurface;
-use gfx_hal::pso::{BufferDescriptorFormat, BufferDescriptorType, ColorValue, DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ShaderStageFlags, Viewport};
+use gfx_hal::pso::{BufferDescriptorFormat, BufferDescriptorType, ColorValue, DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ImageDescriptorType, ShaderStageFlags, Viewport};
 use gfx_hal::queue::Queue;
 use gfx_hal::window::Extent2D;
+use image::{RgbaImage, RgbImage};
 use winit::window::Window;
 
 use crate::buffer::Buffer;
@@ -23,7 +24,7 @@ use crate::descriptors::DescSetLayout;
 use crate::framebuffer::FramebufferData;
 use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
-use crate::image_buffer::Image;
+use crate::image_buffer::{Image, ImageBuffer};
 use crate::material_controller::MaterialController;
 use crate::mesh_controller::MeshController;
 use crate::RendererConfig;
@@ -45,6 +46,8 @@ pub(crate) struct Renderer<B: Backend> {
 	index_buffers: Vec<Buffer<B>>,
 	uniform_buffers: Vec<Uniform<B>>,
 	uniform_desc_pool: Option<B::DescriptorPool>,
+	image_buffers: Vec<ImageBuffer<B>>,
+	image_desc_pool: Option<B::DescriptorPool>,
 	depth_image: Image<B>,
 	pub recreate_swapchain: bool,
 	bg_color: ColorValue,
@@ -73,6 +76,26 @@ impl<B: Backend> Renderer<B> {
 					},
 					count: 100,
 				}),
+				DescriptorPoolCreateFlags::empty(),
+			)
+		}.ok();
+
+		let image_desc_pool = unsafe {
+			device.borrow().device.create_descriptor_pool(
+				1,
+				vec![DescriptorRangeDesc {
+					ty: DescriptorType::Image {
+						ty: ImageDescriptorType::Sampled {
+							with_sampler: false,
+						},
+					},
+					count: 1,
+				},
+					DescriptorRangeDesc {
+						ty: DescriptorType::Sampler,
+						count: 1,
+					},
+				].into_iter(),
 				DescriptorPoolCreateFlags::empty(),
 			)
 		}.ok();
@@ -108,6 +131,8 @@ impl<B: Backend> Renderer<B> {
 			index_buffers: vec![],
 			uniform_buffers: vec![],
 			uniform_desc_pool,
+			image_buffers: vec![],
+			image_desc_pool,
 			depth_image,
 			recreate_swapchain: true,
 			bg_color: [0.1, 0.1, 0.1, 1.0],
@@ -172,6 +197,57 @@ impl<B: Backend> Renderer<B> {
 		let buffer_id = self.uniform_buffers.len();
 		self.uniform_buffers.push(uniform);
 		buffer_id
+	}
+
+	pub fn add_image_buffer(&mut self, rgb_image: RgbaImage) -> usize {
+		let image_desc = DescSetLayout::new(
+			Rc::clone(&self.device),
+			vec![
+				DescriptorSetLayoutBinding{
+					binding: 0,
+					ty: DescriptorType::Image {
+						ty: ImageDescriptorType::Sampled {
+							with_sampler: false,
+						},
+					},
+					count: 1,
+					stage_flags: ShaderStageFlags::FRAGMENT,
+					immutable_samplers: false,
+				},
+				DescriptorSetLayoutBinding{
+					binding: 1,
+					ty: DescriptorType::Sampler,
+					count: 1,
+					stage_flags: ShaderStageFlags::FRAGMENT,
+					immutable_samplers: false,
+				},
+			],
+		);
+
+		let image_desc = image_desc.create_desc_set(
+			self.image_desc_pool.as_mut().unwrap(),
+			"image",
+			Rc::clone(&self.device),
+		);
+
+		let mut staging_pool = unsafe{self.device.borrow().device.create_command_pool(
+			self.device.borrow().queues.family,
+			CommandPoolCreateFlags::empty(),
+		)}.expect("Cannot create staging command pool");
+
+		let image_buffer = ImageBuffer::new(
+			image_desc,
+			&rgb_image,
+			&self.core.adapter,
+			Usage::TRANSFER_SRC,
+			 Rc::clone(&self.device),
+			&mut staging_pool,
+		);
+
+		let buffer_index = self.image_buffers.len();
+		image_buffer.wait_for_transfer_completion();
+		self.image_buffers.push(image_buffer);
+		buffer_index
 	}
 
 	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, material_controller: &MaterialController) {
@@ -327,7 +403,7 @@ impl<B: Backend> Renderer<B> {
 				let pipeline_layout = pipeline.pipeline_layout.as_ref().unwrap();
 
 				cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffers[buffer_id as usize].get(), SubRange::WHOLE)));
-				cmd_buffer.bind_index_buffer( self.index_buffers[buffer_id as usize].get(), SubRange::WHOLE, IndexType::U16);
+				cmd_buffer.bind_index_buffer(self.index_buffers[buffer_id as usize].get(), SubRange::WHOLE, IndexType::U16);
 				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
 				let sets = vec![self.uniform_buffers[ubo_id].desc.as_ref().unwrap().set.as_ref().unwrap()];
 
@@ -337,7 +413,7 @@ impl<B: Backend> Renderer<B> {
 					iter::empty(),
 				);
 
-				cmd_buffer.draw_indexed(0..amount_of_indices ,0, 0..1);
+				cmd_buffer.draw_indexed(0..amount_of_indices, 0, 0..1);
 			}
 
 

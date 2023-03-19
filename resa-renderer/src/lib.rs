@@ -45,7 +45,7 @@ impl ResaRenderer {
 
 		let extent = Extent2D{width: config.extent.width, height: config.extent.height};
 		let material_controller = MaterialController::new(config.shaders);
-		let pipe_types = material_controller.get_registred_pipeline_types();
+		let pipe_types = material_controller.get_registered_pipeline_types();
 
 		let mut renderer = Renderer::new(window, extent);
 		for pipeline_type in pipe_types {
@@ -65,6 +65,10 @@ impl ResaRenderer {
 
 	pub fn register_materials(&mut self, materials: &[Material]) -> Vec<u64> {
 		self.material_controller.add_new_materials(materials, &mut self.renderer)
+	}
+
+	pub fn register_texture(&mut self, image_data: Vec<u8>) -> usize{
+		self.material_controller.add_new_texture(image_data, &mut self.renderer)
 	}
 
 	/// Refresh the renderers swapchain setting e.g. after a surface size change

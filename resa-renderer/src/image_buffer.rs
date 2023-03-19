@@ -37,16 +37,25 @@ pub struct Image<B: Backend> {
 }
 
 impl<B: Backend> ImageBuffer<B> {
-	pub fn new(mut desc: DescSet<B>, img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>, adapter: &CoreAdapter<B>, usage: buffer::Usage, device_ptr:Rc<RefCell<CoreDevice<B>>>, staging_pool: &mut B::CommandPool) -> Self {
-		let (buffer, dimensions, row_pitch, stride) = Buffer::new_texture(Rc::clone(&desc.layout.device), &mut device_ptr.borrow_mut().device, img, &adapter, usage);
+	pub fn new(
+		mut desc: DescSet<B>,
+		img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>,
+		adapter: &CoreAdapter<B>,
+		usage: buffer::Usage,
+		device_ptr:Rc<RefCell<CoreDevice<B>>>,
+		staging_pool: &mut B::CommandPool) -> Self {
+		let (buffer, dimensions, row_pitch, stride) = Buffer::new_texture(Rc::clone(&device_ptr), img, &adapter, usage);
 
 		let buffer = Some(buffer);
 		let dimensions = Extent { width: dimensions.width, height: dimensions.height, depth: 1 };
-		let image = Image::new(device_ptr.clone(), &adapter, dimensions, Format::Rgba8Srgb, Tiling::Optimal, Usage::TRANSFER_DST | Usage::SAMPLED, Properties::DEVICE_LOCAL, Aspects::COLOR, Usage::SAMPLED);
+		let image = Image::new(Rc::clone(&device_ptr), &adapter, dimensions, Format::Rgba8Srgb, Tiling::Optimal, Usage::TRANSFER_DST | Usage::SAMPLED, Properties::DEVICE_LOCAL, Aspects::COLOR, Usage::SAMPLED);
 
-		let device = &mut device_ptr.borrow_mut().device;
+		let device_ref = &mut device_ptr.borrow_mut();
+		// let device = &mut device_ref.device;
+
 		let image_buffer = unsafe {
-			let sampler = device.create_sampler(&SamplerDesc::new(Filter::Linear, WrapMode::Clamp)).expect(" Cannot create sampler!");
+			let sampler = device_ref.device.create_sampler(
+				&SamplerDesc::new(Filter::Linear, WrapMode::Clamp)).expect(" Cannot create sampler!");
 
 			desc.write_to_state(DescSetWrite {
 				binding: 0,
@@ -56,7 +65,7 @@ impl<B: Backend> ImageBuffer<B> {
 					Layout::ShaderReadOnlyOptimal,
 				)),
 			},
-				device,
+				&mut device_ref.device,
 			);
 
 			desc.write_to_state(DescSetWrite {
@@ -64,10 +73,10 @@ impl<B: Backend> ImageBuffer<B> {
 				array_offset: 0,
 				descriptors: iter::once(Descriptor::Sampler(&sampler)),
 			},
-				device,
+				&mut device_ref.device,
 			);
 
-			let mut transfer_image_fence = device.create_fence(false).expect("Cannot create fence");
+			let mut transfer_image_fence = device_ref.device.create_fence(false).expect("Cannot create fence");
 
 			{
 				let mut command_buffer = staging_pool.allocate_one(Level::Primary);
@@ -130,7 +139,7 @@ impl<B: Backend> ImageBuffer<B> {
 
 				command_buffer.finish();
 
-				device_ptr.borrow_mut().queues.queues[0].submit(
+				device_ref.queues.queues[0].submit(
 					iter::once(&command_buffer),
 					iter::empty(),
 					iter::empty(),
@@ -148,6 +157,14 @@ impl<B: Backend> ImageBuffer<B> {
 		};
 
 		image_buffer
+	}
+
+	pub fn wait_for_transfer_completion(&self){
+		let device = &self.desc.layout.device.borrow().device;
+		unsafe{
+			device.wait_for_fence(self.transferred_image_fence.as_ref().unwrap(), !0)
+				.unwrap();
+		}
 	}
 }
 

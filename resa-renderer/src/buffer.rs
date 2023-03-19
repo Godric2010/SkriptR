@@ -76,7 +76,7 @@ impl<B: Backend> Buffer<B> {
 		}
 	}
 
-	pub fn new_texture(device_ptr: Rc<RefCell<CoreDevice<B>>>, device: &B::Device, img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>, adapter: &CoreAdapter<B>, usage: Usage) -> (Self, Dimensions<u32>, u32, usize) {
+	pub fn new_texture(device_ptr: Rc<RefCell<CoreDevice<B>>>, img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>, adapter: &CoreAdapter<B>, usage: Usage) -> (Self, Dimensions<u32>, u32, usize) {
 		let (width, height) = img.dimensions();
 
 		let row_alignment_mask = adapter.limits.optimal_buffer_copy_pitch_alignment as u32 - 1;
@@ -90,6 +90,7 @@ impl<B: Backend> Buffer<B> {
 		let size: u64;
 
 		unsafe {
+			let device = &device_ptr.borrow().device;
 			buffer = device.create_buffer(upload_size, usage, SparseFlags::empty()).unwrap();
 			let mem_reqs = device.get_buffer_requirements(&buffer);
 

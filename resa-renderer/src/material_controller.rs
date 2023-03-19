@@ -1,7 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::fs;
 use std::hash::{Hash, Hasher};
+use std::io::Cursor;
 use crate::graphics_pipeline::PipelineType;
 use crate::material::Material;
 use crate::renderer::Renderer;
@@ -17,10 +17,8 @@ pub struct MaterialController {
 
 impl MaterialController {
 	pub fn new(shaders: Vec<ShaderRef>) -> Self {
-
 		let mut pipeline_shader_map = HashMap::<PipelineType, usize>::new();
 		pipeline_shader_map.insert(PipelineType::Opaque, 0);
-
 
 		MaterialController {
 			material_map: HashMap::new(),
@@ -31,7 +29,7 @@ impl MaterialController {
 		}
 	}
 
-	pub(crate) fn get_registred_pipeline_types(&self) -> Vec<&PipelineType>{
+	pub(crate) fn get_registered_pipeline_types(&self) -> Vec<&PipelineType>{
 		let mut types = vec![];
 		for (pipeline_type, _) in &self.pipeline_shader_map {
 			types.push(pipeline_type);
@@ -67,6 +65,12 @@ impl MaterialController {
 		renderer.update_pipeline(&buffer_ids, &PipelineType::Opaque, &self);
 
 		material_ids
+	}
+
+	pub(crate) fn add_new_texture(&mut self, image_data: Vec<u8>, renderer: &mut Renderer<backend::Backend>) -> usize{
+		let img = image::load(Cursor::new(&image_data[..]), image::ImageFormat::Png).unwrap().to_rgba8();
+		let buffer_index = renderer.add_image_buffer(img);
+		buffer_index
 	}
 
 	pub(crate) fn find_all_buffers_of_pipeline_type(&self, pipeline_type: PipelineType) -> Vec<usize>{

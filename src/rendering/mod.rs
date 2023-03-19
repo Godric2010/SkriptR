@@ -79,8 +79,7 @@ impl RenderingSystem {
 		mesh_renderer.material_id = Some(material_id);
 	}
 
-	pub fn register_texture(&self, bytes: Vec<u8>) -> usize {
-		/*self.resa_renderer.*/
-		1
+	pub fn register_texture(&mut self, bytes: Vec<u8>) -> usize {
+		self.resa_renderer.register_texture(bytes)
 	}
 }
