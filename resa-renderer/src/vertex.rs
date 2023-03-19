@@ -30,6 +30,14 @@ impl Vertex {
 					offset: 0, // Zero bytes form the beginning of the vertex struct to the position value
 				},
 			},
+			AttributeDesc{
+				location: 1,
+				binding: 0,
+				element: Element{
+					format: Format::Rg32Sfloat,
+					offset: size_of::<Vec3>() as u32,
+				}
+			},
 		];
 		attributes
 	}

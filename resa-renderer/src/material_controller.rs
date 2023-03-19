@@ -10,7 +10,7 @@ use crate::shader::ShaderRef;
 pub struct MaterialController {
 	pub material_map: HashMap<u64, Material>,
 	pub(crate) ubo_map: HashMap<u64, usize>,
-	pub(crate) texture_map: HashMap<u64, usize>,
+	pub(crate) texture_map: HashMap<u64,usize>,
 	pipeline_shader_map: HashMap<PipelineType, usize>,
 	shader_ref_list: Vec<ShaderRef>
 }
@@ -51,18 +51,26 @@ impl MaterialController {
 			material.hash(&mut hasher);
 			let material_hash = hasher.finish();
 			let buffer_id = renderer.add_uniform_buffer(&material.get_ubo_data());
+			let texture_id = material.texture.clone();
 
 			self.material_map.insert(material_hash, *material);
 			self.ubo_map.insert(material_hash, buffer_id);
+			self.texture_map.insert(material_hash, texture_id.unwrap_or(0));
 
 			material_ids.push(material_hash);
+		}
+
+		// TODO: Rework this update process. This is shit! The pipelines should only be updated if a new incompatible material gets pushed!
+		let mut tex_ids = vec![];
+		for(_, texture_id) in &self.texture_map{
+			tex_ids.push(texture_id.clone());
 		}
 
 		let mut buffer_ids = vec![];
 		for (_, buffer_id) in &self.ubo_map{
 			buffer_ids.push(buffer_id.clone());
 		}
-		renderer.update_pipeline(&buffer_ids, &PipelineType::Opaque, &self);
+		// renderer.update_pipeline(&buffer_ids, &tex_ids, &PipelineType::Opaque, &self);
 
 		material_ids
 	}

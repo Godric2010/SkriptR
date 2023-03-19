@@ -21,9 +21,8 @@ fn main() {
 	};
 
 	let world = Rc::clone(&app.world);//app.borrow().world.borrow_mut();
-
-	let i = app.resource_loader.load_image("Wood.png");
-	println!("{}", i.unwrap());
+	let wood_tex = app.resource_loader.load_image("Wood.png");
+	println!("Wood tex id: {}", wood_tex.clone().unwrap());
 
 	let camera_entity = world.borrow_mut().new_entity();
 	let camera = Camera::new(45., [0.1, 100.], true);
@@ -35,18 +34,21 @@ fn main() {
 		shader_id: 1,
 		pipeline_type: PipelineType::Opaque,
 		color: Color::new(255, 0, 0, 255),
+		texture: None,
 	};
 
 	let material02 = Material {
 		shader_id: 1,
 		pipeline_type: PipelineType::Opaque,
 		color: Color::new(0, 0, 0, 255),
+		texture: None,
 	};
 
 	let material03 = Material {
 		shader_id: 1,
 		pipeline_type: PipelineType::Opaque,
-		color: Color::new(68, 204, 0, 255),
+		color: Color::new(255, 255, 255, 255),
+		texture: wood_tex,
 	};
 
 	let entity01 = world.borrow_mut().new_entity();

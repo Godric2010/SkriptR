@@ -2,7 +2,8 @@
 #extension GL_ARB_seperate_shader_objects : enable
 
 layout(location = 0) in vec3 position;
-//layout(location = 1) in vec3 normal;
+layout(location = 1) in vec2 uv;
+layout(location = 0) out vec2 v_uv;
 
 layout(push_constant) uniform PushConstants{
    /* vec3 position;
@@ -15,6 +16,6 @@ layout(push_constant) uniform PushConstants{
 //layout(location = 0) out vec4 vertex_color;
 
 void main(){
-//    vertex_color = push_constants.color;//vec4(0.6, 0.2, 0.8, 1.0);
+    v_uv = uv;
     gl_Position = push_constants.projection * push_constants.view * push_constants.model * vec4(position, 1.0);
 }

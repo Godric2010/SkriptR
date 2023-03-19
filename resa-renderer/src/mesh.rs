@@ -28,13 +28,13 @@ impl Hash for Mesh {
 pub fn create_primitive_cube() -> Mesh {
 	let vertices = vec![
 		Vertex { position: Vector3::new(-0.5, -0.5, 0.5), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(0.5, -0.5, 0.5), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(-0.5, 0.5, 0.5), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(0.5, 0.5, 0.5), uv: Vector2::new(0.0, 0.0) },
+		Vertex { position: Vector3::new(0.5, -0.5, 0.5), uv: Vector2::new(1.0, 0.0) },
+		Vertex { position: Vector3::new(-0.5, 0.5, 0.5), uv: Vector2::new(0.0, 1.0) },
+		Vertex { position: Vector3::new(0.5, 0.5, 0.5), uv: Vector2::new(1.0, 1.0) },
 		Vertex { position: Vector3::new(-0.5, -0.5, -0.5), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(0.5, -0.5, -0.5), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(-0.5, 0.5, -0.5), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(0.5, 0.5, -0.5), uv: Vector2::new(0.0, 0.0) },
+		Vertex { position: Vector3::new(0.5, -0.5, -0.5), uv: Vector2::new(1.0, 0.0) },
+		Vertex { position: Vector3::new(-0.5, 0.5, -0.5), uv: Vector2::new(0.0, 1.0) },
+		Vertex { position: Vector3::new(0.5, 0.5, -0.5), uv: Vector2::new(1.0, 1.0) },
 	];
 	let triangle_list = vec![
 		0, 2, 3, 0, 1, 3, //Front

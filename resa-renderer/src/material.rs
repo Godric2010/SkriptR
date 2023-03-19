@@ -26,6 +26,7 @@ pub struct Material {
 	pub shader_id: u32,
 	pub pipeline_type: PipelineType,
 	pub color: Color,
+	pub texture: Option<usize>,
 }
 
 impl Material {

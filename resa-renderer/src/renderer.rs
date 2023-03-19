@@ -15,7 +15,7 @@ use gfx_hal::prelude::PresentationSurface;
 use gfx_hal::pso::{BufferDescriptorFormat, BufferDescriptorType, ColorValue, DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ImageDescriptorType, ShaderStageFlags, Viewport};
 use gfx_hal::queue::Queue;
 use gfx_hal::window::Extent2D;
-use image::{RgbaImage, RgbImage};
+use image::{Rgba, RgbaImage, RgbImage};
 use winit::window::Window;
 
 use crate::buffer::Buffer;
@@ -82,18 +82,18 @@ impl<B: Backend> Renderer<B> {
 
 		let image_desc_pool = unsafe {
 			device.borrow().device.create_descriptor_pool(
-				1,
+				100,
 				vec![DescriptorRangeDesc {
 					ty: DescriptorType::Image {
 						ty: ImageDescriptorType::Sampled {
 							with_sampler: false,
 						},
 					},
-					count: 1,
+					count: 100,
 				},
 					DescriptorRangeDesc {
 						ty: DescriptorType::Sampler,
-						count: 1,
+						count: 100,
 					},
 				].into_iter(),
 				DescriptorPoolCreateFlags::empty(),
@@ -203,7 +203,7 @@ impl<B: Backend> Renderer<B> {
 		let image_desc = DescSetLayout::new(
 			Rc::clone(&self.device),
 			vec![
-				DescriptorSetLayoutBinding{
+				DescriptorSetLayoutBinding {
 					binding: 0,
 					ty: DescriptorType::Image {
 						ty: ImageDescriptorType::Sampled {
@@ -214,7 +214,7 @@ impl<B: Backend> Renderer<B> {
 					stage_flags: ShaderStageFlags::FRAGMENT,
 					immutable_samplers: false,
 				},
-				DescriptorSetLayoutBinding{
+				DescriptorSetLayoutBinding {
 					binding: 1,
 					ty: DescriptorType::Sampler,
 					count: 1,
@@ -230,17 +230,19 @@ impl<B: Backend> Renderer<B> {
 			Rc::clone(&self.device),
 		);
 
-		let mut staging_pool = unsafe{self.device.borrow().device.create_command_pool(
-			self.device.borrow().queues.family,
-			CommandPoolCreateFlags::empty(),
-		)}.expect("Cannot create staging command pool");
+		let mut staging_pool = unsafe {
+			self.device.borrow().device.create_command_pool(
+				self.device.borrow().queues.family,
+				CommandPoolCreateFlags::empty(),
+			)
+		}.expect("Cannot create staging command pool");
 
 		let image_buffer = ImageBuffer::new(
 			image_desc,
 			&rgb_image,
 			&self.core.adapter,
 			Usage::TRANSFER_SRC,
-			 Rc::clone(&self.device),
+			Rc::clone(&self.device),
 			&mut staging_pool,
 		);
 
@@ -252,8 +254,12 @@ impl<B: Backend> Renderer<B> {
 
 	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, material_controller: &MaterialController) {
 		self.add_uniform_buffer(&[1.0, 0.0, 0.4, 1.0]);
+		self.add_image_buffer(RgbaImage::from_pixel(1, 1, Rgba::from([255, 255, 255, 255])));
 		let shader_ref = material_controller.get_pipeline_shaders(&pipeline_type).unwrap();
 		let mut desc_layouts = vec![];
+		for image in &self.image_buffers {
+			desc_layouts.push(image.get_layout())
+		}
 		for ubo in &self.uniform_buffers {
 			desc_layouts.push(ubo.get_layout());
 		}
@@ -267,11 +273,14 @@ impl<B: Backend> Renderer<B> {
 		));
 	}
 
-	pub fn update_pipeline(&mut self, ubo_ids: &[usize], pipeline_type: &PipelineType, material_controller: &MaterialController) {
+	pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, material_controller: &MaterialController) {
 		let device = &self.device.borrow().device;
 		device.wait_idle().unwrap();
 
 		let mut desc_layouts = vec![];
+		for id in tex_ids {
+			desc_layouts.push(self.image_buffers[*id].get_layout());
+		}
 		for id in ubo_ids {
 			desc_layouts.push(self.uniform_buffers[*id].get_layout());
 		}
@@ -392,6 +401,7 @@ impl<B: Backend> Renderer<B> {
 			for (mesh_id, material_id, transform) in render_objects.iter() {
 				let (buffer_id, amount_of_indices) = mesh_controller.get_mesh_data(mesh_id);
 				let ubo_id = material_controller.ubo_map.get(material_id).unwrap_or(&0).clone();
+				let texture_id = material_controller.texture_map.get(material_id).unwrap().clone();
 
 				let mvp = MVP {
 					model: *transform,
@@ -405,7 +415,11 @@ impl<B: Backend> Renderer<B> {
 				cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffers[buffer_id as usize].get(), SubRange::WHOLE)));
 				cmd_buffer.bind_index_buffer(self.index_buffers[buffer_id as usize].get(), SubRange::WHOLE, IndexType::U16);
 				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
-				let sets = vec![self.uniform_buffers[ubo_id].desc.as_ref().unwrap().set.as_ref().unwrap()];
+
+				let sets = vec![
+					self.image_buffers[texture_id].desc.set.as_ref().unwrap(),
+					self.uniform_buffers[ubo_id].desc.as_ref().unwrap().set.as_ref().unwrap()];
+
 
 				cmd_buffer.bind_graphics_descriptor_sets(pipeline.pipeline_layout.as_ref().unwrap(),
 					0,

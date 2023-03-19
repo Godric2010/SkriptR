@@ -21,7 +21,7 @@ pub struct Dimensions<T> {
 }
 
 pub struct ImageBuffer<B: Backend> {
-	desc: DescSet<B>,
+	pub(crate) desc: DescSet<B>,
 	buffer: Option<Buffer<B>>,
 	sampler: Option<B::Sampler>,
 	image: Option<Image<B>>,
@@ -165,6 +165,10 @@ impl<B: Backend> ImageBuffer<B> {
 			device.wait_for_fence(self.transferred_image_fence.as_ref().unwrap(), !0)
 				.unwrap();
 		}
+	}
+
+	pub fn get_layout(&self) -> &B::DescriptorSetLayout{
+		self.desc.get_layout()
 	}
 }
 
