@@ -26,6 +26,7 @@ use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
 use crate::image_buffer::{Image, ImageBuffer};
 use crate::material_controller::MaterialController;
+use crate::material::MaterialRef;
 use crate::mesh_controller::MeshController;
 use crate::RendererConfig;
 use crate::renderpass::RenderPass;
@@ -330,7 +331,7 @@ impl<B: Backend> Renderer<B> {
 		depth_image
 	}
 
-	pub fn draw(&mut self, render_objects: &[(u64, u64, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], mesh_controller: &MeshController, material_controller: &MaterialController) {
+	pub fn draw(&mut self, render_objects: &[(u64, MaterialRef, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], mesh_controller: &MeshController, material_controller: &MaterialController) {
 		if self.recreate_swapchain {
 			self.recreate_swapchain(Extent2D { width: self.swapchain.extent.width, height: self.swapchain.extent.height });
 			self.recreate_swapchain = false;

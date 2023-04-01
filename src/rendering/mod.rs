@@ -3,7 +3,7 @@ use std::rc::Rc;
 use winit::window::Window;
 use resa_ecs::world::World;
 use resa_renderer::{RendererConfig, ResaRenderer};
-use resa_renderer::material::Material;
+use resa_renderer::material::{Material, MaterialRef};
 use resa_renderer::mesh::Mesh;
 use crate::rendering::camera::Camera;
 use crate::rendering::mesh_renderer::MeshRenderer;
@@ -51,7 +51,7 @@ impl RenderingSystem {
 			} else {
 				make_transform_matrix(&Transform::idle())
 			};
-			let mat_id = mesh.material_id.unwrap_or(0);
+			let mat_id = mesh.material_id.unwrap_or(MaterialRef::default());
 			mesh_data.push((mesh.mesh_id, mat_id, transform))
 		}
 
@@ -75,7 +75,7 @@ impl RenderingSystem {
 	}
 
 	pub fn assign_material_to_mesh(&mut self, mesh_renderer: &mut MeshRenderer, material: Material) {
-		let material_id = self.resa_renderer.register_materials(&[material])[0];
+		let material_id = self.resa_renderer.register_material(material);
 		mesh_renderer.material_id = Some(material_id);
 	}
 

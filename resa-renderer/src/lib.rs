@@ -1,7 +1,7 @@
 use gfx_hal::window::Extent2D;
 use winit::dpi::PhysicalSize;
 use winit::window::{Window};
-use crate::material::Material;
+use crate::material::{Material, MaterialRef};
 use crate::material_controller::MaterialController;
 use crate::mesh::Mesh;
 use crate::mesh_controller::MeshController;
@@ -63,8 +63,16 @@ impl ResaRenderer {
 		self.mesh_controller.add_mesh(mesh, &mut self.renderer)
 	}
 
-	pub fn register_materials(&mut self, materials: &[Material]) -> Vec<u64> {
-		self.material_controller.add_new_materials(materials, &mut self.renderer)
+	pub fn register_material(&mut self, material: Material) -> MaterialRef {
+		self.material_controller.add_new_material(material, &mut self.renderer)
+	}
+
+	pub fn get_material_mut(&mut self, material_id: &MaterialRef) -> &mut Material{
+		self.material_controller.material_map.get_mut(&material_id).unwrap()
+	}
+
+	pub fn update_material(&mut self, material_id: &MaterialRef, material :Material){
+		// TODO: Implement material update function from material controller here!
 	}
 
 	pub fn register_texture(&mut self, image_data: Vec<u8>) -> usize{
@@ -77,7 +85,7 @@ impl ResaRenderer {
 	}
 
 	/// Render all given meshes to the given output device
-	pub fn render(&mut self, render_objects: &[(u64, u64, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4]) {
+	pub fn render(&mut self, render_objects: &[(u64, MaterialRef, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4]) {
 		self.renderer.draw(render_objects, view_mat, projection_mat, &self.mesh_controller, &self.material_controller);
 	}
 
