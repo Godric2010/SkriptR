@@ -31,8 +31,8 @@ use crate::swapchain::Swapchain;
 use crate::uniform::Uniform;
 use crate::vertex::Vertex;
 use crate::mesh::Mesh;
-use crate::render_resources::material_controller::MaterialController;
-use crate::render_resources::mesh_controller::MeshController;
+use crate::render_resources::material_library::MaterialLibrary;
+use crate::render_resources::mesh_library::MeshLibrary;
 use crate::render_resources::RenderResources;
 
 pub(crate) struct Renderer<B: Backend> {
@@ -59,7 +59,6 @@ pub(crate) struct Renderer<B: Backend> {
 
 impl<B: Backend> Renderer<B> {
 	pub(crate) fn new(window: &Window, extent: Extent2D, resources: Rc<RefCell<RenderResources>>) -> Self {
-
 		// Create the connection between code and gpu.
 		let mut core = Core::<B>::create(&window).unwrap();
 		let device = Rc::new(RefCell::new(CoreDevice::<B>::new(core.adapter.adapter.take().unwrap(), &core.surface)));
@@ -334,7 +333,7 @@ impl<B: Backend> Renderer<B> {
 		depth_image
 	}
 
-	pub fn draw(&mut self, render_objects: &[(u64, MaterialRef, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], mesh_controller: &MeshController, material_controller: &MaterialController) {
+	pub fn draw(&mut self, render_objects: &[(u64, MaterialRef, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4]) {
 		if self.recreate_swapchain {
 			self.recreate_swapchain(Extent2D { width: self.swapchain.extent.width, height: self.swapchain.extent.height });
 			self.recreate_swapchain = false;
@@ -359,6 +358,7 @@ impl<B: Backend> Renderer<B> {
 		}
 
 		let pipeline = &self.pipelines[0];
+		let resource_binding = self.render_resources.borrow();
 
 		unsafe {
 			let (mut cmd_buffer, mut fence) = match command_buffers.pop() {
@@ -403,9 +403,9 @@ impl<B: Backend> Renderer<B> {
 			);
 
 			for (mesh_id, material_id, transform) in render_objects.iter() {
-				let (buffer_id, amount_of_indices) = mesh_controller.get_mesh_data(mesh_id);
-				let ubo_id = material_controller.ubo_map.get(material_id).unwrap_or(&0).clone();
-				let texture_id = material_controller.texture_map.get(material_id).unwrap().clone();
+				let (buffer_id, amount_of_indices) = resource_binding.mesh_lib.get_mesh_data(mesh_id);
+				let ubo_id = resource_binding.material_lib.ubo_map.get(material_id).unwrap_or(&0).clone();
+				let texture_id = resource_binding.material_lib.texture_map.get(material_id).unwrap().clone();
 
 				let mvp = MVP {
 					model: *transform,

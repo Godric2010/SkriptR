@@ -4,14 +4,14 @@ use std::hash::{Hash, Hasher};
 use crate::mesh::Mesh;
 use crate::renderer::Renderer;
 
-pub struct MeshController{
+pub struct MeshLibrary {
 	pub mesh_map: HashMap<u64, Mesh>,
 	pub(crate) buffer_map: HashMap<u64, usize>,
 }
 
-impl MeshController {
+impl MeshLibrary {
 	pub fn new() -> Self{
-		MeshController{
+		MeshLibrary {
 			mesh_map: HashMap::new(),
 			buffer_map: HashMap::new(),
 		}

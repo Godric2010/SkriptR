@@ -4,35 +4,23 @@ use crate::graphics_pipeline::PipelineType;
 use crate::material::{Material, MaterialRef};
 use crate::renderer::Renderer;
 
-pub struct MaterialController {
+pub struct MaterialLibrary {
 	pub material_map: HashMap<MaterialRef, Material>,
 	pub(crate) ubo_map: HashMap<MaterialRef, usize>,
-	pub(crate) texture_map: HashMap<MaterialRef,usize>,
-	pipeline_shader_map: HashMap<PipelineType, usize>,
+	pub(crate) texture_map: HashMap<MaterialRef, usize>,
 }
 
-impl MaterialController {
+impl MaterialLibrary {
 	pub fn new() -> Self {
-		let mut pipeline_shader_map = HashMap::<PipelineType, usize>::new();
-		pipeline_shader_map.insert(PipelineType::Opaque, 0);
 
-	     MaterialController {
+		MaterialLibrary {
 			material_map: HashMap::new(),
 			ubo_map: HashMap::new(),
 			texture_map: HashMap::new(),
-			pipeline_shader_map,
 		}
 	}
 
-	pub(crate) fn get_registered_pipeline_types(&self) -> Vec<&PipelineType>{
-		let mut types = vec![];
-		for (pipeline_type, _) in &self.pipeline_shader_map {
-			types.push(pipeline_type);
-		}
-		types
-	}
-
-	pub(crate) fn add_new_material(&mut self, material: Material, renderer: &mut Renderer<backend::Backend>) -> MaterialRef{
+	pub(crate) fn add_new_material(&mut self, material: Material, renderer: &mut Renderer<backend::Backend>) -> MaterialRef {
 		let material_id = MaterialRef(self.material_map.len());
 		//TODO: Consider using a callback to the renderer here...
 		let buffer_id = renderer.add_uniform_buffer(&material.get_ubo_data());
@@ -46,16 +34,16 @@ impl MaterialController {
 
 	/* TODO: Implement material update function here! */
 
-	pub(crate) fn add_new_texture(&mut self, image_data: Vec<u8>, renderer: &mut Renderer<backend::Backend>) -> usize{
+	pub(crate) fn add_new_texture(&mut self, image_data: Vec<u8>, renderer: &mut Renderer<backend::Backend>) -> usize {
 		let img = image::load(Cursor::new(&image_data[..]), image::ImageFormat::Png).unwrap().to_rgba8();
 		let buffer_index = renderer.add_image_buffer(img);
 		buffer_index
 	}
 
-	pub(crate) fn find_all_buffers_of_pipeline_type(&self, pipeline_type: PipelineType) -> Vec<usize>{
+	pub(crate) fn find_all_buffers_of_pipeline_type(&self, pipeline_type: PipelineType) -> Vec<usize> {
 		let mut buffer_ids = vec![];
 		for (hash, material) in &self.material_map {
-			if material.pipeline_type == pipeline_type{
+			if material.pipeline_type == pipeline_type {
 				buffer_ids.push(self.ubo_map.get(hash).unwrap().clone());
 			}
 		}
