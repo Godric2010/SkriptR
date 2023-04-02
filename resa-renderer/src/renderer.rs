@@ -15,7 +15,7 @@ use gfx_hal::prelude::PresentationSurface;
 use gfx_hal::pso::{BufferDescriptorFormat, BufferDescriptorType, ColorValue, DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ImageDescriptorType, ShaderStageFlags, Viewport};
 use gfx_hal::queue::Queue;
 use gfx_hal::window::Extent2D;
-use image::{Rgba, RgbaImage, RgbImage};
+use image::{Rgba, RgbaImage,};
 use winit::window::Window;
 
 use crate::buffer::Buffer;
@@ -25,15 +25,15 @@ use crate::framebuffer::FramebufferData;
 use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
 use crate::image_buffer::{Image, ImageBuffer};
-use crate::material_controller::MaterialController;
 use crate::material::MaterialRef;
-use crate::mesh_controller::MeshController;
-use crate::RendererConfig;
 use crate::renderpass::RenderPass;
 use crate::swapchain::Swapchain;
 use crate::uniform::Uniform;
 use crate::vertex::Vertex;
 use crate::mesh::Mesh;
+use crate::render_resources::material_controller::MaterialController;
+use crate::render_resources::mesh_controller::MeshController;
+use crate::render_resources::RenderResources;
 
 pub(crate) struct Renderer<B: Backend> {
 	core: Core<B>,
@@ -54,10 +54,11 @@ pub(crate) struct Renderer<B: Backend> {
 	bg_color: ColorValue,
 	frames_drawn: usize,
 	start_time: Instant,
+	render_resources: Rc<RefCell<RenderResources>>,
 }
 
 impl<B: Backend> Renderer<B> {
-	pub(crate) fn new(window: &Window, extent: Extent2D) -> Self {
+	pub(crate) fn new(window: &Window, extent: Extent2D, resources: Rc<RefCell<RenderResources>>) -> Self {
 
 		// Create the connection between code and gpu.
 		let mut core = Core::<B>::create(&window).unwrap();
@@ -139,7 +140,7 @@ impl<B: Backend> Renderer<B> {
 			bg_color: [0.1, 0.1, 0.1, 1.0],
 			frames_drawn: 0,
 			start_time: Instant::now(),
-
+			render_resources: resources.clone(),
 		}
 	}
 
@@ -253,10 +254,11 @@ impl<B: Backend> Renderer<B> {
 		buffer_index
 	}
 
-	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, material_controller: &MaterialController) {
+	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, shader_id: &usize) {
 		self.add_uniform_buffer(&[1.0, 0.0, 0.4, 1.0]);
 		self.add_image_buffer(RgbaImage::from_pixel(1, 1, Rgba::from([255, 255, 255, 255])));
-		let shader_ref = material_controller.get_pipeline_shaders(&pipeline_type).unwrap();
+		let resource_binding = self.render_resources.borrow();
+		let shader_ref = resource_binding.shader_lib.get_by_id(shader_id).unwrap();
 		let mut desc_layouts = vec![];
 		for image in &self.image_buffers {
 			desc_layouts.push(image.get_layout())
@@ -274,7 +276,7 @@ impl<B: Backend> Renderer<B> {
 		));
 	}
 
-	pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, material_controller: &MaterialController) {
+	pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, shader_id: &usize) {
 		let device = &self.device.borrow().device;
 		device.wait_idle().unwrap();
 
@@ -286,7 +288,8 @@ impl<B: Backend> Renderer<B> {
 			desc_layouts.push(self.uniform_buffers[*id].get_layout());
 		}
 
-		let shader_ref = material_controller.get_pipeline_shaders(pipeline_type).unwrap();
+		let resource_binding = self.render_resources.borrow();
+		let shader_ref = resource_binding.shader_lib.get_by_id(shader_id).unwrap();
 
 		let pipeline_idx = self.pipelines.iter().position(|pipe| &pipe.pipeline_type == pipeline_type).unwrap();
 

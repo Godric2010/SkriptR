@@ -4,8 +4,8 @@ use std::rc::Rc;
 use gfx_hal::{Backend, buffer};
 use gfx_hal::command::{BufferImageCopy, CommandBuffer, CommandBufferFlags, Level};
 use gfx_hal::device::Device;
-use gfx_hal::format::{AsFormat, Aspects, Format, Rgba8Srgb, Swizzle};
-use gfx_hal::image::{Access, Extent, Filter, Kind, Layout, Offset, SamplerDesc, Size, SubresourceLayers, SubresourceRange, Tiling, Usage, ViewCapabilities, ViewKind, WrapMode};
+use gfx_hal::format::{ Aspects, Format, Swizzle};
+use gfx_hal::image::{Access, Extent, Filter, Kind, Layout, Offset, SamplerDesc, SubresourceLayers, SubresourceRange, Tiling, Usage, ViewCapabilities, ViewKind, WrapMode};
 use gfx_hal::memory::{Barrier, Dependencies, Properties, SparseFlags};
 use gfx_hal::pool::CommandPool;
 use gfx_hal::pso::{Descriptor, PipelineStage};
@@ -13,7 +13,6 @@ use gfx_hal::queue::Queue;
 use crate::buffer::Buffer;
 use crate::core::{CoreAdapter, CoreDevice};
 use crate::descriptors::{DescSet, DescSetWrite};
-use crate::image_buffer;
 
 pub struct Dimensions<T> {
 	pub width: T,

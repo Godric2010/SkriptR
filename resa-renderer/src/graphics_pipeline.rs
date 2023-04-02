@@ -5,7 +5,7 @@ use std::rc::Rc;
 use gfx_hal::{Backend, spec_const_list};
 use gfx_hal::device::Device;
 use gfx_hal::pass::Subpass;
-use gfx_hal::pso::{BlendState, ColorBlendDesc, ColorMask, Comparison, DepthStencilDesc, DepthTest, Element, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization, VertexBufferDesc, VertexInputRate};
+use gfx_hal::pso::{BlendState, ColorBlendDesc, ColorMask, Comparison, DepthStencilDesc, DepthTest, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization };
 use crate::core::CoreDevice;
 use crate::helper::MVP;
 use crate::vertex::Vertex;
