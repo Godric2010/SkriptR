@@ -1,11 +1,8 @@
-use std::cell::RefCell;
-use std::rc::Rc;
 use gfx_hal::window::Extent2D;
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 use crate::material::{Material, MaterialRef};
 use crate::mesh::Mesh;
-use render_resources::mesh_library::MeshLibrary;
 use crate::graphics_pipeline::PipelineType;
 use crate::render_resources::RenderResources;
 use crate::renderer::Renderer;
@@ -37,7 +34,7 @@ pub struct RendererConfig {
 
 pub struct ResaRenderer {
 	renderer: Renderer<backend::Backend>,
-	render_resources: Rc<RefCell<RenderResources>>,
+	render_resources: RenderResources<backend::Backend>
 }
 
 impl ResaRenderer {
@@ -45,12 +42,12 @@ impl ResaRenderer {
 	pub fn new(window: &Window, config: RendererConfig) -> Self {
 
 		let extent = Extent2D{width: config.extent.width, height: config.extent.height};
-		let render_resources = Rc::new(RefCell::new(RenderResources::new(config.shaders)));
 		let pipe_types = vec![PipelineType::Opaque];//material_controller.get_registered_pipeline_types();
 
-		let mut renderer = Renderer::new(window, extent, render_resources.clone());
+		let mut renderer = Renderer::new(window, extent);
+		let render_resources = RenderResources::new(config.shaders, &renderer);
 		for pipeline_type in pipe_types.iter() {
-			renderer.create_pipeline(pipeline_type, &0);
+			renderer.create_pipeline(pipeline_type, &render_resources.shader_lib.get_by_id(&0).unwrap());
 		}
 
 		ResaRenderer {
@@ -60,17 +57,15 @@ impl ResaRenderer {
 	}
 
 	pub fn register_mesh(&mut self, mesh: Mesh) -> u64 {
-		self.render_resources.borrow_mut().mesh_lib.add_mesh(mesh, &mut self.renderer)
+		self.render_resources.mesh_lib.add_mesh(mesh)
 	}
 
 	pub fn register_material(&mut self, material: Material) -> MaterialRef {
-		self.render_resources.borrow_mut().material_lib.add_new_material(material, &mut self.renderer)
+		self.render_resources.material_lib.add_new_material(material, &mut self.renderer)
 	}
 
-	pub fn get_material_mut(&mut self, material_id: &MaterialRef) -> Material{
-		let mut resource_binding = self.render_resources.borrow_mut();
-		let mut material = resource_binding.material_lib.material_map.get_mut(&material_id).unwrap().clone();
-		material
+	pub fn get_material_mut(&mut self, material_id: &MaterialRef) -> &mut Material{
+		self.render_resources.material_lib.material_map.get_mut(&material_id).unwrap()
 	}
 
 	pub fn update_material(&mut self, material_id: &MaterialRef, material :Material){
@@ -78,7 +73,7 @@ impl ResaRenderer {
 	}
 
 	pub fn register_texture(&mut self, image_data: Vec<u8>) -> usize{
-		self.render_resources.borrow_mut().material_lib.add_new_texture(image_data, &mut self.renderer)
+		self.render_resources.material_lib.add_new_texture(image_data, &mut self.renderer)
 	}
 
 	/// Refresh the renderers swapchain setting e.g. after a surface size change
@@ -88,7 +83,7 @@ impl ResaRenderer {
 
 	/// Render all given meshes to the given output device
 	pub fn render(&mut self, render_objects: &[(u64, MaterialRef, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4]) {
-		self.renderer.draw(render_objects, view_mat, projection_mat);
+		self.renderer.draw(render_objects, view_mat, projection_mat, &self.render_resources);
 	}
 
 	pub fn get_fps(&self) -> f32 {

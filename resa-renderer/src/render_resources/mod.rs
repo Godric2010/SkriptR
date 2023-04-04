@@ -1,20 +1,22 @@
+use gfx_hal::Backend;
 use crate::render_resources::material_library::MaterialLibrary;
 use crate::render_resources::mesh_library::MeshLibrary;
 use crate::render_resources::shader_library::ShaderLibrary;
+use crate::renderer::Renderer;
 use crate::shader::ShaderRef;
 
 pub mod material_library;
 pub mod mesh_library;
 pub mod shader_library;
 
-pub struct RenderResources {
+pub struct RenderResources<B: Backend> {
 	pub shader_lib: ShaderLibrary,
 	pub material_lib: MaterialLibrary,
-	pub mesh_lib: MeshLibrary,
+	pub mesh_lib: MeshLibrary<B>,
 }
 
-impl RenderResources {
-	pub fn new(shaders: Vec<ShaderRef>) -> Self {
+impl<B:Backend> RenderResources<B> {
+	pub fn new(shaders: Vec<ShaderRef>, renderer: &Renderer<B>) -> Self {
 
 		let mut shader_lib = ShaderLibrary::new();
 		for shader in shaders {
@@ -24,7 +26,7 @@ impl RenderResources {
 		Self {
 			shader_lib,
 			material_lib: MaterialLibrary::new(),
-			mesh_lib: MeshLibrary::new(),
+			mesh_lib: MeshLibrary::new(renderer.get_device(), renderer.get_memory_types()),
 		}
 	}
 }

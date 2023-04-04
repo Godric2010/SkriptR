@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use gfx_hal::{Backend, IndexType};
+use gfx_hal::adapter::MemoryType;
 use gfx_hal::buffer::{SubRange, Usage};
 use gfx_hal::command::{ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
 use gfx_hal::device::Device;
@@ -31,11 +32,10 @@ use crate::swapchain::Swapchain;
 use crate::uniform::Uniform;
 use crate::vertex::Vertex;
 use crate::mesh::Mesh;
-use crate::render_resources::material_library::MaterialLibrary;
-use crate::render_resources::mesh_library::MeshLibrary;
 use crate::render_resources::RenderResources;
+use crate::shader::ShaderRef;
 
-pub(crate) struct Renderer<B: Backend> {
+pub struct Renderer<B: Backend> {
 	core: Core<B>,
 	device: Rc<RefCell<CoreDevice<B>>>,
 	swapchain: Swapchain,
@@ -54,11 +54,10 @@ pub(crate) struct Renderer<B: Backend> {
 	bg_color: ColorValue,
 	frames_drawn: usize,
 	start_time: Instant,
-	render_resources: Rc<RefCell<RenderResources>>,
 }
 
 impl<B: Backend> Renderer<B> {
-	pub(crate) fn new(window: &Window, extent: Extent2D, resources: Rc<RefCell<RenderResources>>) -> Self {
+	pub(crate) fn new(window: &Window, extent: Extent2D) -> Self {
 		// Create the connection between code and gpu.
 		let mut core = Core::<B>::create(&window).unwrap();
 		let device = Rc::new(RefCell::new(CoreDevice::<B>::new(core.adapter.adapter.take().unwrap(), &core.surface)));
@@ -139,8 +138,15 @@ impl<B: Backend> Renderer<B> {
 			bg_color: [0.1, 0.1, 0.1, 1.0],
 			frames_drawn: 0,
 			start_time: Instant::now(),
-			render_resources: resources.clone(),
 		}
+	}
+
+	pub fn get_device(&self) -> Rc<RefCell<CoreDevice<B>>>{
+		self.device.clone()
+	}
+
+	pub fn get_memory_types(&self) -> Vec<MemoryType>{
+		self.core.adapter.memory_types.clone()
 	}
 
 	pub fn add_vertex_and_index_buffer(&mut self, mesh: &Mesh) -> usize {
@@ -253,11 +259,9 @@ impl<B: Backend> Renderer<B> {
 		buffer_index
 	}
 
-	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, shader_id: &usize) {
+	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, shader_ref: &ShaderRef) {
 		self.add_uniform_buffer(&[1.0, 0.0, 0.4, 1.0]);
 		self.add_image_buffer(RgbaImage::from_pixel(1, 1, Rgba::from([255, 255, 255, 255])));
-		let resource_binding = self.render_resources.borrow();
-		let shader_ref = resource_binding.shader_lib.get_by_id(shader_id).unwrap();
 		let mut desc_layouts = vec![];
 		for image in &self.image_buffers {
 			desc_layouts.push(image.get_layout())
@@ -275,7 +279,7 @@ impl<B: Backend> Renderer<B> {
 		));
 	}
 
-	pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, shader_id: &usize) {
+	pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, shader_ref: &ShaderRef) {
 		let device = &self.device.borrow().device;
 		device.wait_idle().unwrap();
 
@@ -286,9 +290,6 @@ impl<B: Backend> Renderer<B> {
 		for id in ubo_ids {
 			desc_layouts.push(self.uniform_buffers[*id].get_layout());
 		}
-
-		let resource_binding = self.render_resources.borrow();
-		let shader_ref = resource_binding.shader_lib.get_by_id(shader_id).unwrap();
 
 		let pipeline_idx = self.pipelines.iter().position(|pipe| &pipe.pipeline_type == pipeline_type).unwrap();
 
@@ -333,7 +334,7 @@ impl<B: Backend> Renderer<B> {
 		depth_image
 	}
 
-	pub fn draw(&mut self, render_objects: &[(u64, MaterialRef, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4]) {
+	pub fn draw(&mut self, render_objects: &[(u64, MaterialRef, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], resource_binding: &RenderResources<B>) {
 		if self.recreate_swapchain {
 			self.recreate_swapchain(Extent2D { width: self.swapchain.extent.width, height: self.swapchain.extent.height });
 			self.recreate_swapchain = false;
@@ -358,7 +359,6 @@ impl<B: Backend> Renderer<B> {
 		}
 
 		let pipeline = &self.pipelines[0];
-		let resource_binding = self.render_resources.borrow();
 
 		unsafe {
 			let (mut cmd_buffer, mut fence) = match command_buffers.pop() {
@@ -403,7 +403,8 @@ impl<B: Backend> Renderer<B> {
 			);
 
 			for (mesh_id, material_id, transform) in render_objects.iter() {
-				let (buffer_id, amount_of_indices) = resource_binding.mesh_lib.get_mesh_data(mesh_id);
+				let mesh_data = resource_binding.mesh_lib.get_mesh_entry(mesh_id);
+				let mesh_index_amount = resource_binding.mesh_lib.get_mesh_index_amount(mesh_id);
 				let ubo_id = resource_binding.material_lib.ubo_map.get(material_id).unwrap_or(&0).clone();
 				let texture_id = resource_binding.material_lib.texture_map.get(material_id).unwrap().clone();
 
@@ -415,9 +416,8 @@ impl<B: Backend> Renderer<B> {
 
 				let mvp_bytes = mvp.as_bytes();
 				let pipeline_layout = pipeline.pipeline_layout.as_ref().unwrap();
-
-				cmd_buffer.bind_vertex_buffers(0, iter::once((self.vertex_buffers[buffer_id as usize].get(), SubRange::WHOLE)));
-				cmd_buffer.bind_index_buffer(self.index_buffers[buffer_id as usize].get(), SubRange::WHOLE, IndexType::U16);
+				cmd_buffer.bind_vertex_buffers(0, iter::once((mesh_data.vertex_buffer.get(), SubRange::WHOLE)));
+				cmd_buffer.bind_index_buffer(mesh_data.index_buffer.get(), SubRange::WHOLE, IndexType::U16);
 				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
 
 				let sets = vec![
@@ -431,7 +431,7 @@ impl<B: Backend> Renderer<B> {
 					iter::empty(),
 				);
 
-				cmd_buffer.draw_indexed(0..amount_of_indices, 0, 0..1);
+				cmd_buffer.draw_indexed(0..mesh_index_amount, 0, 0..1);
 			}
 
 
