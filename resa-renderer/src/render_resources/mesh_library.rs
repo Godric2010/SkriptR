@@ -56,7 +56,8 @@ impl<B: Backend> MeshLibrary<B> {
 					vertex_buffer: vertex,
 					index_buffer: index,
 				};
-				let entry_id = self.last_entry + 1;
+				let entry_id = self.last_entry;
+				self.last_entry += 1;
 				self.mesh_map.insert(entry_id, entry);
 				entry_id
 			}
@@ -106,8 +107,8 @@ impl<B: Backend> MeshLibrary<B> {
 	}
 
 	fn get_mesh_id(&self, mesh_hash: &u64) -> Option<u64> {
-		let result = self.mesh_map.iter().find(|mesh| &mesh.1.mesh_hash == mesh_hash)?.0;
-		Some(result.clone())
+		let result = self.mesh_map.iter().find(|mesh| &mesh.1.mesh_hash == mesh_hash)?;
+		Some(result.0.clone())
 	}
 
 	fn create_buffers(&self, mesh: &Mesh) -> (Buffer<B>, Buffer<B>) {
