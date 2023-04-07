@@ -405,8 +405,9 @@ impl<B: Backend> Renderer<B> {
 			for (mesh_id, material_id, transform) in render_objects.iter() {
 				let mesh_data = resource_binding.mesh_lib.get_mesh_entry(mesh_id);
 				let mesh_index_amount = resource_binding.mesh_lib.get_mesh_index_amount(mesh_id);
-				let ubo_id = resource_binding.material_lib.ubo_map.get(material_id).unwrap_or(&0).clone();
-				let texture_id = resource_binding.material_lib.texture_map.get(material_id).unwrap().clone();
+				let material_render_data = resource_binding.material_lib.get_render_data(material_id);
+				// let ubo_id = resource_binding.material_lib.ubo_map.get(material_id).unwrap_or(&0).clone();
+				// let texture_id = resource_binding.material_lib.texture_map.get(material_id).unwrap().clone();
 
 				let mvp = MVP {
 					model: *transform,
@@ -421,8 +422,8 @@ impl<B: Backend> Renderer<B> {
 				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
 
 				let sets = vec![
-					self.image_buffers[texture_id].desc.set.as_ref().unwrap(),
-					self.uniform_buffers[ubo_id].desc.as_ref().unwrap().set.as_ref().unwrap()];
+					self.image_buffers[material_render_data.1.clone()].desc.set.as_ref().unwrap(),
+					material_render_data.0.desc.as_ref().unwrap().set.as_ref().unwrap()];
 
 
 				cmd_buffer.bind_graphics_descriptor_sets(pipeline.pipeline_layout.as_ref().unwrap(),

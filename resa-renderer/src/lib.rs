@@ -60,12 +60,12 @@ impl ResaRenderer {
 		self.render_resources.mesh_lib.add_mesh(mesh)
 	}
 
-	pub fn register_material(&mut self, material: Material) -> MaterialRef {
-		self.render_resources.material_lib.add_new_material(material, &mut self.renderer)
+	pub fn register_materials(&mut self, materials: &[Material]) -> Vec<MaterialRef> {
+		self.render_resources.material_lib.add_materials(materials)
 	}
 
 	pub fn get_material_mut(&mut self, material_id: &MaterialRef) -> &mut Material{
-		self.render_resources.material_lib.material_map.get_mut(&material_id).unwrap()
+		self.render_resources.material_lib.material_map_old.get_mut(&material_id).unwrap()
 	}
 
 	pub fn update_material(&mut self, material_id: &MaterialRef, material :Material){

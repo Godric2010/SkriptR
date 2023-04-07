@@ -8,10 +8,11 @@ use crate::shader::ShaderRef;
 pub mod material_library;
 pub mod mesh_library;
 pub mod shader_library;
+mod uniform_buffer_library;
 
 pub struct RenderResources<B: Backend> {
 	pub shader_lib: ShaderLibrary,
-	pub material_lib: MaterialLibrary,
+	pub material_lib: MaterialLibrary<B>,
 	pub mesh_lib: MeshLibrary<B>,
 }
 
@@ -25,7 +26,7 @@ impl<B:Backend> RenderResources<B> {
 
 		Self {
 			shader_lib,
-			material_lib: MaterialLibrary::new(),
+			material_lib: MaterialLibrary::new(renderer.get_device(), renderer.get_memory_types()),
 			mesh_lib: MeshLibrary::new(renderer.get_device(), renderer.get_memory_types()),
 		}
 	}
