@@ -1,10 +1,11 @@
 use std::cell::RefCell;
 use std::iter;
 use std::rc::Rc;
-use gfx_hal::{Backend, buffer};
+use gfx_hal::{Backend, buffer, Limits};
+use gfx_hal::adapter::MemoryType;
 use gfx_hal::command::{BufferImageCopy, CommandBuffer, CommandBufferFlags, Level};
 use gfx_hal::device::Device;
-use gfx_hal::format::{ Aspects, Format, Swizzle};
+use gfx_hal::format::{Aspects, Format, Swizzle};
 use gfx_hal::image::{Access, Extent, Filter, Kind, Layout, Offset, SamplerDesc, SubresourceLayers, SubresourceRange, Tiling, Usage, ViewCapabilities, ViewKind, WrapMode};
 use gfx_hal::memory::{Barrier, Dependencies, Properties, SparseFlags};
 use gfx_hal::pool::CommandPool;
@@ -32,22 +33,23 @@ pub struct Image<B: Backend> {
 	pub image: Option<B::Image>,
 	pub memory: Option<B::Memory>,
 	pub format: Format,
-	device: Rc<RefCell<CoreDevice<B>>>
+	device: Rc<RefCell<CoreDevice<B>>>,
 }
 
 impl<B: Backend> ImageBuffer<B> {
 	pub fn new(
 		mut desc: DescSet<B>,
 		img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>,
-		adapter: &CoreAdapter<B>,
+		adapter_limits: &Limits,
+		memory_types: &[MemoryType],
 		usage: buffer::Usage,
-		device_ptr:Rc<RefCell<CoreDevice<B>>>,
+		device_ptr: Rc<RefCell<CoreDevice<B>>>,
 		staging_pool: &mut B::CommandPool) -> Self {
-		let (buffer, dimensions, row_pitch, stride) = Buffer::new_texture(Rc::clone(&device_ptr), img, &adapter, usage);
+		let (buffer, dimensions, row_pitch, stride) = Buffer::new_texture(Rc::clone(&device_ptr), img, &adapter_limits, memory_types, usage);
 
 		let buffer = Some(buffer);
 		let dimensions = Extent { width: dimensions.width, height: dimensions.height, depth: 1 };
-		let image = Image::new(Rc::clone(&device_ptr), &adapter, dimensions, Format::Rgba8Srgb, Tiling::Optimal, Usage::TRANSFER_DST | Usage::SAMPLED, Properties::DEVICE_LOCAL, Aspects::COLOR, Usage::SAMPLED);
+		let image = Image::new(Rc::clone(&device_ptr), &memory_types, dimensions, Format::Rgba8Srgb, Tiling::Optimal, Usage::TRANSFER_DST | Usage::SAMPLED, Properties::DEVICE_LOCAL, Aspects::COLOR, Usage::SAMPLED);
 
 		let device_ref = &mut device_ptr.borrow_mut();
 		// let device = &mut device_ref.device;
@@ -158,21 +160,21 @@ impl<B: Backend> ImageBuffer<B> {
 		image_buffer
 	}
 
-	pub fn wait_for_transfer_completion(&self){
+	pub fn wait_for_transfer_completion(&self) {
 		let device = &self.desc.layout.device.borrow().device;
-		unsafe{
+		unsafe {
 			device.wait_for_fence(self.transferred_image_fence.as_ref().unwrap(), !0)
-				.unwrap();
+			      .unwrap();
 		}
 	}
 
-	pub fn get_layout(&self) -> &B::DescriptorSetLayout{
+	pub fn get_layout(&self) -> &B::DescriptorSetLayout {
 		self.desc.get_layout()
 	}
 }
 
 impl<B: Backend> Image<B> {
-	pub fn new(device_ptr: Rc<RefCell<CoreDevice<B>>>, adapter: &CoreAdapter<B>, dimensions: Extent, format: Format, tiling: Tiling, usage: Usage, memory_properties: Properties, aspects: Aspects, view_usage: Usage) -> Self {
+	pub fn new(device_ptr: Rc<RefCell<CoreDevice<B>>>, memory_types: &[MemoryType], dimensions: Extent, format: Format, tiling: Tiling, usage: Usage, memory_properties: Properties, aspects: Aspects, view_usage: Usage) -> Self {
 		let device = &device_ptr.borrow().device;
 		let kind = Kind::D2(dimensions.width, dimensions.height, 1, 1);
 		let mut image = unsafe {
@@ -189,17 +191,17 @@ impl<B: Backend> Image<B> {
 
 		let req = unsafe { device.get_image_requirements(&image) };
 
-		let device_type = adapter
-			.memory_types
-			.iter()
-			.enumerate()
-			.position(|(id, memory_type)| {
-				req.type_mask & (1 << id) != 0 && memory_type.properties.contains(memory_properties)
-			})
-			.unwrap()
-			.into();
+		let device_type =
+			memory_types
+				.iter()
+				.enumerate()
+				.position(|(id, memory_type)| {
+					req.type_mask & (1 << id) != 0 && memory_type.properties.contains(memory_properties)
+				})
+				.unwrap()
+				.into();
 
-		let memory =  unsafe { device.allocate_memory(device_type, req.size).unwrap() };
+		let memory = unsafe { device.allocate_memory(device_type, req.size).unwrap() };
 		unsafe { device.bind_image_memory(&memory, 0, &mut image).unwrap(); }
 		let image_view = unsafe {
 			device.create_image_view(

@@ -47,7 +47,7 @@ impl ResaRenderer {
 		let mut renderer = Renderer::new(window, extent);
 		let render_resources = RenderResources::new(config.shaders, &renderer);
 		for pipeline_type in pipe_types.iter() {
-			renderer.create_pipeline(pipeline_type, &render_resources.shader_lib.get_by_id(&0).unwrap());
+			renderer.create_pipeline(pipeline_type, &render_resources);
 		}
 
 		ResaRenderer {
@@ -65,15 +65,11 @@ impl ResaRenderer {
 	}
 
 	pub fn get_material_mut(&mut self, material_id: &MaterialRef) -> &mut Material{
-		self.render_resources.material_lib.material_map_old.get_mut(&material_id).unwrap()
+		self.render_resources.material_lib.get_material_mut(&material_id).unwrap()
 	}
 
 	pub fn update_material(&mut self, material_id: &MaterialRef, material :Material){
-		todo!("Implement material update function from material controller here!")
-	}
-
-	pub fn register_texture(&mut self, image_data: Vec<u8>) -> usize{
-		self.render_resources.material_lib.add_new_texture(image_data, &mut self.renderer)
+		self.render_resources.material_lib.update_material(material_id, material);
 	}
 
 	/// Refresh the renderers swapchain setting e.g. after a surface size change

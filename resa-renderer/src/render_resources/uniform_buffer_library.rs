@@ -27,11 +27,24 @@ pub(crate) struct UniformBufferLibrary<B: Backend>{
 impl<B: Backend> UniformBufferLibrary<B>  {
 
 	pub fn new(device_ptr: Rc<RefCell<CoreDevice<B>>>, memory_types: Vec<MemoryType>) -> Self{
-		Self{
+		let mut instance = Self{
 			entries: vec![],
 			device_ptr,
 			memory_types,
-		}
+		};
+
+		let mut pool = instance.create_descriptor_pool(1);
+		let buffer = instance.create_uniform_buffer(&[1.0, 0.0, 0.4, 1.0], &mut pool);
+
+		instance.entries.push(
+			Entry{
+				desc_pool: pool.unwrap(),
+				buffers: vec![buffer],
+				capacity: 1,
+			}
+		);
+
+		instance
 	}
 
 	pub fn add_buffers(&mut self, data_packages: Vec<Vec<f32>>) -> Vec<UBORef>{
@@ -58,6 +71,10 @@ impl<B: Backend> UniformBufferLibrary<B>  {
 
 	pub fn get_uniform_buffer(&self, ubo_ref: &UBORef) -> &Uniform<B>{
 		&self.entries[ubo_ref.0].buffers[ubo_ref.1]
+	}
+
+	pub(crate) fn get_default_uniform_ref()-> UBORef{
+		UBORef(0,0)
 	}
 
 	fn create_descriptor_pool(&self, capacity: usize) -> Option<<B as Backend>::DescriptorPool> {

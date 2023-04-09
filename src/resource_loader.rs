@@ -6,7 +6,6 @@ use crate::Event::Event;
 
 pub struct ResourceLoader {
 	resources_path: String,
-	register_image_cb: Event<Vec<u8>, usize>,
 }
 
 impl ResourceLoader {
@@ -20,12 +19,7 @@ impl ResourceLoader {
 
 		Some(Self {
 			resources_path: ressource_directory.as_path().to_str().unwrap().to_string(),
-			register_image_cb: Event::new(),
 		})
-	}
-
-	pub(crate) fn set_image_cb(&mut self, cb: impl Fn(Vec<u8>) -> usize + 'static){
-		self.register_image_cb.add_listener(cb);
 	}
 
 	pub(crate) fn load_all_shaders(&self) -> Option<Vec<ShaderRef>> {
@@ -70,7 +64,7 @@ impl ResourceLoader {
 	}
 
 
-	pub fn load_image(&self, image_file_name: &str) -> Option<usize>{
+	pub fn load_image(&self, image_file_name: &str) -> Option<Vec<u8>>{
 		let image_path = self.resources_path.clone() + "/"+ image_file_name;
 		if !fs::metadata(&image_path).is_ok(){
 			return None;
@@ -84,6 +78,6 @@ impl ResourceLoader {
 			}
 		};
 
-		Some(self.register_image_cb.execute(image_bytes))
+		Some(image_bytes)
 	}
 }

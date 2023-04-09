@@ -6,7 +6,7 @@ use resa_renderer::mesh::{create_primitive_cube, create_primitive_quad, create_p
 use rendering::camera::Camera;
 use rendering::transform::Transform;
 use resa_renderer::graphics_pipeline::PipelineType;
-use resa_renderer::material::{Color, Material};
+use resa_renderer::material::{Color, Material, Texture};
 
 mod rendering;
 mod resa_app;
@@ -22,8 +22,7 @@ fn main() {
 	};
 
 	let world = Rc::clone(&app.world);//app.borrow().world.borrow_mut();
-	let wood_tex = app.resource_loader.load_image("Wood.png");
-	println!("Wood tex id: {}", wood_tex.clone().unwrap());
+	let wood_tex = app.resource_loader.load_image("Wood.png").unwrap();
 
 	let camera_entity = world.borrow_mut().new_entity();
 	let camera = Camera::new(45., [0.1, 100.], true);
@@ -35,21 +34,21 @@ fn main() {
 		shader_id: 1,
 		pipeline_type: PipelineType::Opaque,
 		color: Color::new(255, 0, 0, 255),
-		texture: None,
+		texture: Texture::None,
 	};
 
 	let material02 = Material {
 		shader_id: 1,
 		pipeline_type: PipelineType::Opaque,
 		color: Color::new(0, 0, 0, 255),
-		texture: None,
+		texture: Texture::None,
 	};
 
 	let material03 = Material {
 		shader_id: 1,
 		pipeline_type: PipelineType::Opaque,
 		color: Color::new(255, 255, 255, 255),
-		texture: wood_tex,
+		texture: Texture::Pending(wood_tex),//wood_tex,
 	};
 
 	let materials = app.rendering.borrow_mut().load_materials(&vec![material, material02, material03]);

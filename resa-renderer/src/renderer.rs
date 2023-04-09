@@ -3,7 +3,7 @@ use std::{iter};
 use std::rc::Rc;
 use std::time::Instant;
 
-use gfx_hal::{Backend, IndexType};
+use gfx_hal::{Backend, IndexType, Limits};
 use gfx_hal::adapter::MemoryType;
 use gfx_hal::buffer::{SubRange, Usage};
 use gfx_hal::command::{ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
@@ -149,6 +149,10 @@ impl<B: Backend> Renderer<B> {
 		self.core.adapter.memory_types.clone()
 	}
 
+	pub fn get_adapter_limits(&self) -> Limits{
+		self.core.adapter.limits.clone()
+	}
+
 	pub fn add_vertex_and_index_buffer(&mut self, mesh: &Mesh) -> usize {
 		let vertex_buffer = Buffer::new::<Vertex>(
 			Rc::clone(&self.device),
@@ -207,68 +211,63 @@ impl<B: Backend> Renderer<B> {
 	}
 
 	pub fn add_image_buffer(&mut self, rgb_image: RgbaImage) -> usize {
-		let image_desc = DescSetLayout::new(
-			Rc::clone(&self.device),
-			vec![
-				DescriptorSetLayoutBinding {
-					binding: 0,
-					ty: DescriptorType::Image {
-						ty: ImageDescriptorType::Sampled {
-							with_sampler: false,
-						},
-					},
-					count: 1,
-					stage_flags: ShaderStageFlags::FRAGMENT,
-					immutable_samplers: false,
-				},
-				DescriptorSetLayoutBinding {
-					binding: 1,
-					ty: DescriptorType::Sampler,
-					count: 1,
-					stage_flags: ShaderStageFlags::FRAGMENT,
-					immutable_samplers: false,
-				},
-			],
-		);
-
-		let image_desc = image_desc.create_desc_set(
-			self.image_desc_pool.as_mut().unwrap(),
-			"image",
-			Rc::clone(&self.device),
-		);
-
-		let mut staging_pool = unsafe {
-			self.device.borrow().device.create_command_pool(
-				self.device.borrow().queues.family,
-				CommandPoolCreateFlags::empty(),
-			)
-		}.expect("Cannot create staging command pool");
-
-		let image_buffer = ImageBuffer::new(
-			image_desc,
-			&rgb_image,
-			&self.core.adapter,
-			Usage::TRANSFER_SRC,
-			Rc::clone(&self.device),
-			&mut staging_pool,
-		);
-
-		let buffer_index = self.image_buffers.len();
-		image_buffer.wait_for_transfer_completion();
-		self.image_buffers.push(image_buffer);
-		buffer_index
+		// let image_desc = DescSetLayout::new(
+		// 	Rc::clone(&self.device),
+		// 	vec![
+		// 		DescriptorSetLayoutBinding {
+		// 			binding: 0,
+		// 			ty: DescriptorType::Image {
+		// 				ty: ImageDescriptorType::Sampled {
+		// 					with_sampler: false,
+		// 				},
+		// 			},
+		// 			count: 1,
+		// 			stage_flags: ShaderStageFlags::FRAGMENT,
+		// 			immutable_samplers: false,
+		// 		},
+		// 		DescriptorSetLayoutBinding {
+		// 			binding: 1,
+		// 			ty: DescriptorType::Sampler,
+		// 			count: 1,
+		// 			stage_flags: ShaderStageFlags::FRAGMENT,
+		// 			immutable_samplers: false,
+		// 		},
+		// 	],
+		// );
+		//
+		// let image_desc = image_desc.create_desc_set(
+		// 	self.image_desc_pool.as_mut().unwrap(),
+		// 	"image",
+		// 	Rc::clone(&self.device),
+		// );
+		//
+		// let mut staging_pool = unsafe {
+		// 	self.device.borrow().device.create_command_pool(
+		// 		self.device.borrow().queues.family,
+		// 		CommandPoolCreateFlags::empty(),
+		// 	)
+		// }.expect("Cannot create staging command pool");
+		//
+		// let image_buffer = ImageBuffer::new(
+		// 	image_desc,
+		// 	&rgb_image,
+		// 	&self.core.adapter,
+		// 	Usage::TRANSFER_SRC,
+		// 	Rc::clone(&self.device),
+		// 	&mut staging_pool,
+		// );
+		//
+		// let buffer_index = self.image_buffers.len();
+		// image_buffer.wait_for_transfer_completion();
+		// self.image_buffers.push(image_buffer);
+		// buffer_index
+		0
 	}
 
-	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, shader_ref: &ShaderRef) {
-		self.add_uniform_buffer(&[1.0, 0.0, 0.4, 1.0]);
-		self.add_image_buffer(RgbaImage::from_pixel(1, 1, Rgba::from([255, 255, 255, 255])));
-		let mut desc_layouts = vec![];
-		for image in &self.image_buffers {
-			desc_layouts.push(image.get_layout())
-		}
-		for ubo in &self.uniform_buffers {
-			desc_layouts.push(ubo.get_layout());
-		}
+	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, resources: &RenderResources<B>) {
+
+		let shader_ref = resources.shader_lib.get_by_id(&0).unwrap();
+		let desc_layouts = resources.material_lib.get_descriptor_layouts();
 
 		self.pipelines.push(GraphicsPipeline::new(
 			desc_layouts.into_iter(),
@@ -279,17 +278,11 @@ impl<B: Backend> Renderer<B> {
 		));
 	}
 
-	pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, shader_ref: &ShaderRef) {
+	pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, resources: &RenderResources<B>) {
 		let device = &self.device.borrow().device;
 		device.wait_idle().unwrap();
-
-		let mut desc_layouts = vec![];
-		for id in tex_ids {
-			desc_layouts.push(self.image_buffers[*id].get_layout());
-		}
-		for id in ubo_ids {
-			desc_layouts.push(self.uniform_buffers[*id].get_layout());
-		}
+		let shader_ref = resources.shader_lib.get_by_id(&0).unwrap();
+		let desc_layouts = resources.material_lib.get_descriptor_layouts();
 
 		let pipeline_idx = self.pipelines.iter().position(|pipe| &pipe.pipeline_type == pipeline_type).unwrap();
 
@@ -330,7 +323,7 @@ impl<B: Backend> Renderer<B> {
 	fn create_depth_image(device: Rc<RefCell<CoreDevice<B>>>, adapter: &CoreAdapter<B>, dimensions: Extent) -> Image<B> {
 		let depth_formats = [Format::D24UnormS8Uint, Format::D32SfloatS8Uint, Format::D32Sfloat];
 		let depth_format = device.borrow().find_supported_format(&depth_formats, Tiling::Optimal, ImageFeature::DEPTH_STENCIL_ATTACHMENT);
-		let depth_image = Image::new(device.clone(), adapter, dimensions, depth_format, Tiling::Optimal, gfx_hal::image::Usage::DEPTH_STENCIL_ATTACHMENT, Properties::DEVICE_LOCAL, Aspects::DEPTH, gfx_hal::image::Usage::SAMPLED);
+		let depth_image = Image::new(device.clone(), 	&adapter.memory_types, dimensions, depth_format, Tiling::Optimal, gfx_hal::image::Usage::DEPTH_STENCIL_ATTACHMENT, Properties::DEVICE_LOCAL, Aspects::DEPTH, gfx_hal::image::Usage::SAMPLED);
 		depth_image
 	}
 
@@ -406,8 +399,6 @@ impl<B: Backend> Renderer<B> {
 				let mesh_data = resource_binding.mesh_lib.get_mesh_entry(mesh_id);
 				let mesh_index_amount = resource_binding.mesh_lib.get_mesh_index_amount(mesh_id);
 				let material_render_data = resource_binding.material_lib.get_render_data(material_id);
-				// let ubo_id = resource_binding.material_lib.ubo_map.get(material_id).unwrap_or(&0).clone();
-				// let texture_id = resource_binding.material_lib.texture_map.get(material_id).unwrap().clone();
 
 				let mvp = MVP {
 					model: *transform,
@@ -422,7 +413,7 @@ impl<B: Backend> Renderer<B> {
 				cmd_buffer.push_graphics_constants(&pipeline_layout, ShaderStageFlags::VERTEX, 0, mvp_bytes);
 
 				let sets = vec![
-					self.image_buffers[material_render_data.1.clone()].desc.set.as_ref().unwrap(),
+					material_render_data.1.desc.set.as_ref().unwrap(),
 					material_render_data.0.desc.as_ref().unwrap().set.as_ref().unwrap()];
 
 

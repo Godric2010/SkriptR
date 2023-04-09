@@ -1,48 +1,46 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::rc::Rc;
 use gfx_hal::adapter::MemoryType;
-use gfx_hal::Backend;
+use gfx_hal::{Backend, Limits};
 use crate::core::CoreDevice;
-use crate::graphics_pipeline::PipelineType;
+use crate::image_buffer::ImageBuffer;
 use crate::material::{Material, MaterialRef};
+use crate::render_resources::texture_buffer_library::{TBORef, TextureBufferLibrary};
 use crate::render_resources::uniform_buffer_library::{UBORef, UniformBufferLibrary};
-use crate::renderer::Renderer;
 use crate::uniform::Uniform;
 
 struct MaterialEntry{
 	material: Material,
 	ubo_ref: UBORef,
-	texture_ref: usize,
+	texture_ref: TBORef,
 }
 
 pub struct MaterialLibrary<B: Backend> {
 	material_map: HashMap<MaterialRef, MaterialEntry>,
-	pub material_map_old: HashMap<MaterialRef, Material>,
-	pub(crate) ubo_map: HashMap<MaterialRef, usize>,
-	pub(crate) texture_map: HashMap<MaterialRef, usize>,
 	ubo_library: UniformBufferLibrary<B>,
+	tbo_library: TextureBufferLibrary<B>,
 	last_entry_id: usize,
 }
 
 impl<B: Backend> MaterialLibrary<B> {
-	pub fn new(device_ptr: Rc<RefCell<CoreDevice<B>>>, memory_types: Vec<MemoryType>) -> Self {
+	pub fn new(device_ptr: Rc<RefCell<CoreDevice<B>>>, memory_types: Vec<MemoryType>, adapter_limits: Limits) -> Self {
 
 		MaterialLibrary {
 			material_map: HashMap::new(),
-			material_map_old: HashMap::new(),
-			ubo_map: HashMap::new(),
-			texture_map: HashMap::new(),
 			ubo_library: UniformBufferLibrary::new(device_ptr.clone(), memory_types.clone()),
+			tbo_library: TextureBufferLibrary::new(device_ptr.clone(), memory_types.clone(), adapter_limits),
 			last_entry_id: 0,
 		}
 	}
 
 	pub fn add_materials(&mut self, materials: &[Material]) -> Vec<MaterialRef>{
 
-		let materials_ubo_data = materials.iter().map(|mat| mat.get_ubo_data()).collect();
+		let materials_ubo_data = materials.iter().map(|mat| (mat.get_ubo_data())).collect();
 		let ubo_refs = self.ubo_library.add_buffers(materials_ubo_data);
+
+		let materials_tbo_data = materials.iter().map(|mat| mat.texture.clone()).collect();
+		let tbo_refs = self.tbo_library.add_texture_buffer(materials_tbo_data);
 
 		let mut material_refs = vec![];
 		for (index,material) in materials.iter().enumerate(){
@@ -50,9 +48,9 @@ impl<B: Backend> MaterialLibrary<B> {
 			self.last_entry_id += 1;
 
 			let entry = MaterialEntry{
-				material: *material,
+				material: material.clone(),
 				ubo_ref: ubo_refs[index],
-				texture_ref: material.texture.unwrap_or(0)
+				texture_ref: tbo_refs[index],
 			};
 
 			self.material_map.insert(material_ref, entry);
@@ -73,38 +71,27 @@ impl<B: Backend> MaterialLibrary<B> {
 		Some(&self.material_map.get(material_ref)?.material)
 	}
 
-	pub(crate) fn get_render_data(&self, material_ref: &MaterialRef) -> (&Uniform<B>, &usize){
+	pub fn get_material_mut(&mut self, material_ref: &MaterialRef) -> Option<&mut Material>{
+		Some(&mut self.material_map.get_mut(material_ref)?.material)
+	}
+
+	pub(crate) fn get_render_data(&self, material_ref: &MaterialRef) -> (&Uniform<B>, &ImageBuffer<B>){
 		let entry = &self.material_map[material_ref];
-		(self.ubo_library.get_uniform_buffer(&entry.ubo_ref), &entry.texture_ref)
+		(self.ubo_library.get_uniform_buffer(&entry.ubo_ref), self.tbo_library.get_texture_buffer(&entry.texture_ref))
 	}
 
-	pub(crate) fn add_new_material(&mut self, material: Material, renderer: &mut Renderer<backend::Backend>) -> MaterialRef {
-		let material_id = MaterialRef(self.material_map_old.len());
-		//TODO: Consider using a callback to the renderer here...
-		let buffer_id = renderer.add_uniform_buffer(&material.get_ubo_data());
-		let texture_id = material.texture.clone();
+	pub(crate) fn get_descriptor_layouts(&self) -> Vec<&<B as Backend>::DescriptorSetLayout>{
+		let texture_buffer = self.tbo_library.get_texture_buffer(&TextureBufferLibrary::<B>::get_default_ref());
+		let uniform_buffer = self.ubo_library.get_uniform_buffer(&UniformBufferLibrary::<B>::get_default_uniform_ref());
 
-		self.material_map_old.insert(material_id.clone(), material);
-		self.ubo_map.insert(material_id.clone(), buffer_id);
-		self.texture_map.insert(material_id.clone(), texture_id.unwrap_or(0));
-		material_id
+		vec![texture_buffer.get_layout(), uniform_buffer.get_layout()]
 	}
 
-	/* TODO: Implement material update function here! */
-
-	pub(crate) fn add_new_texture(&mut self, image_data: Vec<u8>, renderer: &mut Renderer<backend::Backend>) -> usize {
+	/*pub(crate) fn add_new_texture(&mut self, image_data: Vec<u8>, renderer: &mut Renderer<backend::Backend>) -> usize {
 		let img = image::load(Cursor::new(&image_data[..]), image::ImageFormat::Png).unwrap().to_rgba8();
 		let buffer_index = renderer.add_image_buffer(img);
 		buffer_index
-	}
+	}*/
 
-	pub(crate) fn find_all_buffers_of_pipeline_type(&self, pipeline_type: PipelineType) -> Vec<usize> {
-		let mut buffer_ids = vec![];
-		for (hash, material) in &self.material_map_old {
-			if material.pipeline_type == pipeline_type {
-				buffer_ids.push(self.ubo_map.get(hash).unwrap().clone());
-			}
-		}
-		buffer_ids
-	}
+
 }

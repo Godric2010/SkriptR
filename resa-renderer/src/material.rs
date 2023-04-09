@@ -1,6 +1,7 @@
 use crate::graphics_pipeline::PipelineType;
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher}; 
+use std::hash::{Hash, Hasher};
+use crate::render_resources::texture_buffer_library::TBORef;
 
 #[derive(Hash)]
 #[derive(Copy, Clone)]
@@ -29,16 +30,23 @@ impl Color {
 	}
 }
 
+#[derive(Clone, Hash)]
+pub enum Texture{
+	None,
+	Pending(Vec<u8>),
+	Some(TBORef)
+}
+
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Default)]
 pub struct MaterialRef(pub(crate) usize);
 
 #[derive(Hash)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Material {
 	pub shader_id: u32,
 	pub pipeline_type: PipelineType,
 	pub color: Color,
-	pub texture: Option<usize>,
+	pub texture: Texture,
 }
 
 impl Material {

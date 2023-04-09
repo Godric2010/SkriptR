@@ -3,7 +3,7 @@ use std::mem::size_of;
 use std::ptr;
 use std::rc::Rc;
 use gfx_hal::adapter::MemoryType;
-use gfx_hal::Backend;
+use gfx_hal::{Backend, Limits};
 use gfx_hal::buffer::Usage;
 use gfx_hal::device::Device;
 use gfx_hal::memory::{Properties, Segment, SparseFlags};
@@ -76,10 +76,10 @@ impl<B: Backend> Buffer<B> {
 		}
 	}
 
-	pub fn new_texture(device_ptr: Rc<RefCell<CoreDevice<B>>>, img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>, adapter: &CoreAdapter<B>, usage: Usage) -> (Self, Dimensions<u32>, u32, usize) {
+	pub fn new_texture(device_ptr: Rc<RefCell<CoreDevice<B>>>, img: &image::ImageBuffer<::image::Rgba<u8>, Vec<u8>>,adapter_limits: &Limits, memory_types: &[MemoryType], usage: Usage) -> (Self, Dimensions<u32>, u32, usize) {
 		let (width, height) = img.dimensions();
 
-		let row_alignment_mask = adapter.limits.optimal_buffer_copy_pitch_alignment as u32 - 1;
+		let row_alignment_mask = adapter_limits.optimal_buffer_copy_pitch_alignment as u32 - 1;
 		let stride = 4usize;
 
 		let row_pitch = (width * stride as u32 + row_alignment_mask) & !row_alignment_mask;
@@ -94,7 +94,7 @@ impl<B: Backend> Buffer<B> {
 			buffer = device.create_buffer(upload_size, usage, SparseFlags::empty()).unwrap();
 			let mem_reqs = device.get_buffer_requirements(&buffer);
 
-			let upload_type = adapter.memory_types
+			let upload_type = memory_types
 			                         .iter()
 			                         .enumerate()
 			                         .position(|(id, mem_type)| {

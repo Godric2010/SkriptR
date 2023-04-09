@@ -53,10 +53,6 @@ impl ResaApp {
 			shaders: shader_refs,
 		})));
 
-
-		let renderer_binding = renderer.clone();
-		resource_loader.set_image_cb(move |data|renderer_binding.borrow_mut().register_texture(data));
-
 		let world = Rc::new(RefCell::new(World::new()));
 
 		Some(ResaApp {
