@@ -38,4 +38,9 @@ impl<B: Backend> Uniform<B> {
 	pub fn get_layout(&self) -> &B::DescriptorSetLayout{
 		self.desc.as_ref().unwrap().get_layout()
 	}
+
+	pub fn update_buffer<T>(&mut self, new_data: &[T]) where T: Copy{
+		let buffer = self.buffer.as_mut().unwrap();
+		buffer.update_data(0, new_data)
+	}
 }

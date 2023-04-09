@@ -88,8 +88,8 @@ impl<B: Backend> TextureBufferLibrary<B> {
 		tbo_refs
 	}
 
-	pub fn update_texture_buffer(&mut self) {
-		todo!()
+	pub fn update_texture_buffer(&mut self, texture_ref: &TBORef, new_texture_data: Texture) {
+		println!("Texture changed!")
 	}
 
 	pub fn remove_texture_buffer(&mut self) {

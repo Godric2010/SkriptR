@@ -16,7 +16,7 @@ pub mod camera;
 
 
 pub struct RenderingSystem {
-	resa_renderer: ResaRenderer,
+	resa_renderer: Rc<RefCell<ResaRenderer>>,
 	reconfigure_swapchain: bool,
 	frames_drawn: u32,
 
@@ -25,7 +25,7 @@ pub struct RenderingSystem {
 impl RenderingSystem {
 	pub fn new(window: &Window, config: RendererConfig) -> RenderingSystem {
 		RenderingSystem {
-			resa_renderer: ResaRenderer::new(window, config),
+			resa_renderer: Rc::new(RefCell::new(ResaRenderer::new(window, config))),
 			reconfigure_swapchain: true,
 			frames_drawn: 0,
 		}
@@ -37,7 +37,7 @@ impl RenderingSystem {
 
 	pub fn render(&mut self, world: &Rc<RefCell<World>>) {
 		if self.reconfigure_swapchain {
-			self.resa_renderer.refresh();
+			self.resa_renderer.borrow_mut().refresh();
 			self.reconfigure_swapchain = false;
 		}
 
@@ -51,7 +51,7 @@ impl RenderingSystem {
 			} else {
 				make_transform_matrix(&Transform::idle())
 			};
-			let mat_id = mesh.material_id.unwrap_or(MaterialRef::default());
+			let mat_id = mesh.get_material_ref().unwrap_or(MaterialRef::default());
 			mesh_data.push((mesh.mesh_id, mat_id, transform))
 		}
 
@@ -61,7 +61,7 @@ impl RenderingSystem {
 		let view_matrix = camera_system::get_camera_view_matrix(&cam_transform);
 		let proj_matrix = camera_system::get_camera_projection_matrix(&camera);
 
-		self.resa_renderer.render(&mesh_data, view_matrix, proj_matrix);
+		self.resa_renderer.borrow_mut().render(&mesh_data, view_matrix, proj_matrix);
 		self.frames_drawn += 1;
 		if self.frames_drawn % 10 == 0 {
 			self.frames_drawn = 0;
@@ -69,16 +69,12 @@ impl RenderingSystem {
 		}
 	}
 
-	pub fn load_mesh(&mut self, mesh: Mesh) -> MeshRenderer {
-		let mesh_id = self.resa_renderer.register_mesh(mesh);
-		MeshRenderer::new(mesh_id)
+	pub fn create_mesh_renderer(&mut self, mesh: Mesh) -> MeshRenderer {
+		let mesh_id = self.resa_renderer.borrow_mut().register_mesh(mesh);
+		MeshRenderer::new(mesh_id, self.resa_renderer.clone())
 	}
 
 	pub fn load_materials(&mut self, materials: &[Material]) -> Vec<MaterialRef>{
-		self.resa_renderer.register_materials(materials)
-	}
-
-	pub fn assign_material_to_mesh(&mut self, mesh_renderer: &mut MeshRenderer, material: MaterialRef) {
-		mesh_renderer.material_id = Some(material);
+		self.resa_renderer.borrow_mut().register_materials(materials)
 	}
 }

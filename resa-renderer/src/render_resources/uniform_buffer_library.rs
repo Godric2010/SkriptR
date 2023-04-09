@@ -69,6 +69,10 @@ impl<B: Backend> UniformBufferLibrary<B>  {
 		ubo_refs
 	}
 
+	pub fn update_buffer(&mut self, ubo_ref: &UBORef, new_data: Vec<f32>){
+		self.entries[ubo_ref.0].buffers[ubo_ref.1].update_buffer(&new_data);
+	}
+
 	pub fn get_uniform_buffer(&self, ubo_ref: &UBORef) -> &Uniform<B>{
 		&self.entries[ubo_ref.0].buffers[ubo_ref.1]
 	}

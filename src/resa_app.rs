@@ -10,7 +10,7 @@ use resa_ecs::world::World;
 use resa_renderer::RendererConfig;
 use crate::rendering::RenderingSystem;
 use crate::resource_loader::ResourceLoader;
-use crate::test_anim::rotate_entity;
+use crate::test_anim::{change_color, rotate_entity};
 
 #[allow(dead_code)]
 pub struct ResaApp {
@@ -19,7 +19,7 @@ pub struct ResaApp {
 	pub physical_size: PhysicalSize<u32>,
 	pub event_loop: EventLoop<()>,
 	pub window: Window,
-	pub rendering: Rc<RefCell<RenderingSystem>>,
+	pub rendering: RenderingSystem,
 	pub world: Rc<RefCell<World>>,
 	pub resource_loader: ResourceLoader,
 }
@@ -48,10 +48,10 @@ impl ResaApp {
 		};
 
 		let shader_refs = resource_loader.load_all_shaders()?;
-		let renderer = Rc::new(RefCell::new(RenderingSystem::new(&window, RendererConfig {
+		let renderer = RenderingSystem::new(&window, RendererConfig {
 			extent: physical_size.clone(),
 			shaders: shader_refs,
-		})));
+		});
 
 		let world = Rc::new(RefCell::new(World::new()));
 
@@ -85,12 +85,12 @@ impl ResaApp {
 					}
 					WindowEvent::Resized(dims) => {
 						self.physical_size = PhysicalSize::new(dims.width, dims.height);
-						self.rendering.borrow_mut().set_dirty();
+						self.rendering.set_dirty();
 					}
 					WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
 						// set new surface scale here!
 
-						self.rendering.borrow_mut().set_dirty();
+						self.rendering.set_dirty();
 					}
 					_ => (),
 				}
@@ -102,7 +102,10 @@ impl ResaApp {
 					let entity: Entity = Entity(4);
 					rotate_entity(&Rc::clone(&self.world), &entity, &delta_time );
 
-					self.rendering.borrow_mut().render(&Rc::clone(&self.world));
+					let entity = Entity(2);
+					change_color(&Rc::clone(&self.world), &entity, &delta_time);
+
+					self.rendering.render(&Rc::clone(&self.world));
 				}
 				_ => (),
 			}

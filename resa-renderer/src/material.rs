@@ -6,10 +6,10 @@ use crate::render_resources::texture_buffer_library::TBORef;
 #[derive(Hash)]
 #[derive(Copy, Clone)]
 pub struct Color {
-	r: u8,
-	g: u8,
-	b: u8,
-	a: u8,
+	pub r: u8,
+	pub g: u8,
+	pub b: u8,
+	pub a: u8,
 }
 
 impl Color {
@@ -23,10 +23,16 @@ impl Color {
 	}
 
 	pub fn add(&mut self, other: &Color){
-		self.r += other.r;
-		self.g += other.g;
-		self.b += other.b;
-		self.a += other.a;
+
+		let new_r: u16 = (self.r as u16) + (other.r as u16);
+		let new_g: u16 = (self.g as u16) + (other.g as u16);
+		let new_b: u16 = (self.b as u16) + (other.b as u16);
+		let new_a: u16 = (self.a as u16) + (other.a as u16);
+
+		self.r = if new_r > 255 {255} else {new_r as u8};
+		self.g = if new_g > 255 {255} else {new_g as u8};
+		self.b = if new_b > 255 {255} else {new_b as u8};
+		self.a = if new_a > 255 {255} else {new_a as u8};
 	}
 }
 

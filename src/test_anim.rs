@@ -14,14 +14,18 @@ pub fn rotate_entity(world: &Rc<RefCell<World>>, entity: &Entity, delta_time: &f
 
 }
 
-
 pub fn change_color(world: &Rc<RefCell<World>>, entity: &Entity, delta_time: &f64){
 	let mut world_binding = world.borrow_mut();
 	let mesh_renderer: &mut MeshRenderer = world_binding.get_component_mut::<MeshRenderer>(&entity).unwrap();
-	let material = mesh_renderer.get_material_mut();
+	let mut material = mesh_renderer.get_material();
 
-	let red = 4.0/255.0 * delta_time * 255.0;
-	let add_color = Color::new(red as u8, 0, 0, 255);
+	let red = 1.0  ;
+	let add_color = Color::new(red as u8, 0, 0, 0);
 	material.color.add(&add_color);
-	mesh_renderer.set_dirty();
+
+	if material.color.r == 255{
+		material.color.r = 0;
+	}
+
+	mesh_renderer.update_material(material);
 }
