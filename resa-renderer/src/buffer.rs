@@ -7,7 +7,7 @@ use gfx_hal::{Backend, Limits};
 use gfx_hal::buffer::Usage;
 use gfx_hal::device::Device;
 use gfx_hal::memory::{Properties, Segment, SparseFlags};
-use crate::core::{CoreAdapter, CoreDevice};
+use crate::core::{CoreDevice};
 use crate::image_buffer::Dimensions;
 
 pub struct Buffer<B: Backend> {

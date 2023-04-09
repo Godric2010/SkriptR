@@ -12,7 +12,7 @@ use gfx_hal::pool::CommandPool;
 use gfx_hal::pso::{Descriptor, PipelineStage};
 use gfx_hal::queue::Queue;
 use crate::buffer::Buffer;
-use crate::core::{CoreAdapter, CoreDevice};
+use crate::core::{CoreDevice};
 use crate::descriptors::{DescSet, DescSetWrite};
 
 pub struct Dimensions<T> {

@@ -5,35 +5,28 @@ use std::time::Instant;
 
 use gfx_hal::{Backend, IndexType, Limits};
 use gfx_hal::adapter::MemoryType;
-use gfx_hal::buffer::{SubRange, Usage};
+use gfx_hal::buffer::{SubRange};
 use gfx_hal::command::{ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
 use gfx_hal::device::Device;
 use gfx_hal::format::{Aspects, Format, ImageFeature};
 use gfx_hal::image::{Extent, FramebufferAttachment, Tiling, ViewCapabilities};
 use gfx_hal::memory::Properties;
-use gfx_hal::pool::{CommandPool, CommandPoolCreateFlags};
+use gfx_hal::pool::{CommandPool, };
 use gfx_hal::prelude::PresentationSurface;
-use gfx_hal::pso::{BufferDescriptorFormat, BufferDescriptorType, ColorValue, DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ImageDescriptorType, ShaderStageFlags, Viewport};
+use gfx_hal::pso::{ ColorValue, ShaderStageFlags, Viewport};
 use gfx_hal::queue::Queue;
 use gfx_hal::window::Extent2D;
-use image::{Rgba, RgbaImage,};
 use winit::window::Window;
 
-use crate::buffer::Buffer;
 use crate::core::{Core, CoreAdapter, CoreDevice};
-use crate::descriptors::DescSetLayout;
 use crate::framebuffer::FramebufferData;
 use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
-use crate::image_buffer::{Image, ImageBuffer};
+use crate::image_buffer::{Image,};
 use crate::material::MaterialRef;
 use crate::renderpass::RenderPass;
 use crate::swapchain::Swapchain;
-use crate::uniform::Uniform;
-use crate::vertex::Vertex;
-use crate::mesh::Mesh;
 use crate::render_resources::RenderResources;
-use crate::shader::ShaderRef;
 
 pub struct Renderer<B: Backend> {
 	core: Core<B>,
@@ -43,12 +36,6 @@ pub struct Renderer<B: Backend> {
 	framebuffer_data: FramebufferData<B>,
 	viewport: Viewport,
 	pipelines: Vec<GraphicsPipeline<B>>,
-	vertex_buffers: Vec<Buffer<B>>,
-	index_buffers: Vec<Buffer<B>>,
-	uniform_buffers: Vec<Uniform<B>>,
-	uniform_desc_pool: Option<B::DescriptorPool>,
-	image_buffers: Vec<ImageBuffer<B>>,
-	image_desc_pool: Option<B::DescriptorPool>,
 	depth_image: Image<B>,
 	pub recreate_swapchain: bool,
 	bg_color: ColorValue,
@@ -61,44 +48,6 @@ impl<B: Backend> Renderer<B> {
 		// Create the connection between code and gpu.
 		let mut core = Core::<B>::create(&window).unwrap();
 		let device = Rc::new(RefCell::new(CoreDevice::<B>::new(core.adapter.adapter.take().unwrap(), &core.surface)));
-
-		// Create buffers
-
-		let uniform_desc_pool = unsafe {
-			device.borrow().device.create_descriptor_pool(
-				9,
-				iter::once(DescriptorRangeDesc {
-					ty: DescriptorType::Buffer {
-						ty: BufferDescriptorType::Uniform,
-						format: BufferDescriptorFormat::Structured {
-							dynamic_offset: false,
-						},
-					},
-					count: 100,
-				}),
-				DescriptorPoolCreateFlags::empty(),
-			)
-		}.ok();
-
-		let image_desc_pool = unsafe {
-			device.borrow().device.create_descriptor_pool(
-				100,
-				vec![DescriptorRangeDesc {
-					ty: DescriptorType::Image {
-						ty: ImageDescriptorType::Sampled {
-							with_sampler: false,
-						},
-					},
-					count: 100,
-				},
-					DescriptorRangeDesc {
-						ty: DescriptorType::Sampler,
-						count: 100,
-					},
-				].into_iter(),
-				DescriptorPoolCreateFlags::empty(),
-			)
-		}.ok();
 
 		// Create swapchain and render pass and pipelines
 		let swapchain = Swapchain::new(&mut *core.surface, &*device.borrow(), extent);
@@ -127,12 +76,6 @@ impl<B: Backend> Renderer<B> {
 			framebuffer_data,
 			viewport,
 			pipelines: vec![],
-			vertex_buffers: vec![],
-			index_buffers: vec![],
-			uniform_buffers: vec![],
-			uniform_desc_pool,
-			image_buffers: vec![],
-			image_desc_pool,
 			depth_image,
 			recreate_swapchain: true,
 			bg_color: [0.1, 0.1, 0.1, 1.0],
@@ -153,116 +96,6 @@ impl<B: Backend> Renderer<B> {
 		self.core.adapter.limits.clone()
 	}
 
-	pub fn add_vertex_and_index_buffer(&mut self, mesh: &Mesh) -> usize {
-		let vertex_buffer = Buffer::new::<Vertex>(
-			Rc::clone(&self.device),
-			&mesh.vertices,
-			Usage::VERTEX,
-			&self.core.adapter.memory_types,
-		);
-
-		let index_buffer = Buffer::new::<u16>(
-			Rc::clone(&self.device),
-			&mesh.indices,
-			Usage::INDEX,
-			&self.core.adapter.memory_types,
-		);
-
-		let buffer_id = self.vertex_buffers.len();
-		self.vertex_buffers.push(vertex_buffer);
-		self.index_buffers.push(index_buffer);
-		buffer_id
-	}
-
-	pub fn add_uniform_buffer(&mut self, buffer_data: &[f32]) -> usize {
-		let uniform_desc = DescSetLayout::new(
-			Rc::clone(&self.device),
-			vec![
-				DescriptorSetLayoutBinding {
-					binding: 0,
-					ty: DescriptorType::Buffer {
-						ty: BufferDescriptorType::Uniform,
-						format: BufferDescriptorFormat::Structured {
-							dynamic_offset: false,
-						},
-					},
-					count: 1,
-					stage_flags: ShaderStageFlags::FRAGMENT,
-					immutable_samplers: false,
-				}],
-		);
-		let uniform_desc = uniform_desc.create_desc_set(
-			self.uniform_desc_pool.as_mut().unwrap(),
-			"uniform",
-			Rc::clone(&self.device),
-		);
-
-		let uniform = Uniform::new(
-			Rc::clone(&self.device),
-			&self.core.adapter.memory_types,
-			buffer_data,
-			uniform_desc,
-			0,
-		);
-
-		let buffer_id = self.uniform_buffers.len();
-		self.uniform_buffers.push(uniform);
-		buffer_id
-	}
-
-	pub fn add_image_buffer(&mut self, rgb_image: RgbaImage) -> usize {
-		// let image_desc = DescSetLayout::new(
-		// 	Rc::clone(&self.device),
-		// 	vec![
-		// 		DescriptorSetLayoutBinding {
-		// 			binding: 0,
-		// 			ty: DescriptorType::Image {
-		// 				ty: ImageDescriptorType::Sampled {
-		// 					with_sampler: false,
-		// 				},
-		// 			},
-		// 			count: 1,
-		// 			stage_flags: ShaderStageFlags::FRAGMENT,
-		// 			immutable_samplers: false,
-		// 		},
-		// 		DescriptorSetLayoutBinding {
-		// 			binding: 1,
-		// 			ty: DescriptorType::Sampler,
-		// 			count: 1,
-		// 			stage_flags: ShaderStageFlags::FRAGMENT,
-		// 			immutable_samplers: false,
-		// 		},
-		// 	],
-		// );
-		//
-		// let image_desc = image_desc.create_desc_set(
-		// 	self.image_desc_pool.as_mut().unwrap(),
-		// 	"image",
-		// 	Rc::clone(&self.device),
-		// );
-		//
-		// let mut staging_pool = unsafe {
-		// 	self.device.borrow().device.create_command_pool(
-		// 		self.device.borrow().queues.family,
-		// 		CommandPoolCreateFlags::empty(),
-		// 	)
-		// }.expect("Cannot create staging command pool");
-		//
-		// let image_buffer = ImageBuffer::new(
-		// 	image_desc,
-		// 	&rgb_image,
-		// 	&self.core.adapter,
-		// 	Usage::TRANSFER_SRC,
-		// 	Rc::clone(&self.device),
-		// 	&mut staging_pool,
-		// );
-		//
-		// let buffer_index = self.image_buffers.len();
-		// image_buffer.wait_for_transfer_completion();
-		// self.image_buffers.push(image_buffer);
-		// buffer_index
-		0
-	}
 
 	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, resources: &RenderResources<B>) {
 
@@ -278,22 +111,22 @@ impl<B: Backend> Renderer<B> {
 		));
 	}
 
-	pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, resources: &RenderResources<B>) {
-		let device = &self.device.borrow().device;
-		device.wait_idle().unwrap();
-		let shader_ref = resources.shader_lib.get_by_id(&0).unwrap();
-		let desc_layouts = resources.material_lib.get_descriptor_layouts();
-
-		let pipeline_idx = self.pipelines.iter().position(|pipe| &pipe.pipeline_type == pipeline_type).unwrap();
-
-		self.pipelines[pipeline_idx] = GraphicsPipeline::new(
-			desc_layouts.into_iter(),
-			self.render_pass.render_pass.as_ref().unwrap(),
-			Rc::clone(&self.device),
-			&shader_ref.vertex.clone(),
-			&shader_ref.fragment.clone(),
-		);
-	}
+	// pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, resources: &RenderResources<B>) {
+	// 	let device = &self.device.borrow().device;
+	// 	device.wait_idle().unwrap();
+	// 	let shader_ref = resources.shader_lib.get_by_id(&0).unwrap();
+	// 	let desc_layouts = resources.material_lib.get_descriptor_layouts();
+	//
+	// 	let pipeline_idx = self.pipelines.iter().position(|pipe| &pipe.pipeline_type == pipeline_type).unwrap();
+	//
+	// 	self.pipelines[pipeline_idx] = GraphicsPipeline::new(
+	// 		desc_layouts.into_iter(),
+	// 		self.render_pass.render_pass.as_ref().unwrap(),
+	// 		Rc::clone(&self.device),
+	// 		&shader_ref.vertex.clone(),
+	// 		&shader_ref.fragment.clone(),
+	// 	);
+	// }
 
 	pub fn recreate_swapchain(&mut self, dimensions: Extent2D) {
 		let device = &self.device.borrow().device;
@@ -312,10 +145,10 @@ impl<B: Backend> Renderer<B> {
 
 		self.framebuffer_data = FramebufferData::new(Rc::clone(&self.device), self.swapchain.frame_queue_size, new_fb);
 
-		for pipeline in &self.pipelines {
-			let pipe_type = pipeline.pipeline_type;
-			// &mut self.create_pipeline(&pipe_type);
-		}
+		// for pipeline in &self.pipelines {
+		// 	// let pipe_type = pipeline.pipeline_type;
+		// 	// &mut self.create_pipeline(&pipe_type);
+		// }
 
 		self.viewport = self.swapchain.make_viewport();
 	}
