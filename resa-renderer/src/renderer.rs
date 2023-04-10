@@ -20,10 +20,11 @@ use winit::window::Window;
 
 use crate::core::{Core, CoreAdapter, CoreDevice};
 use crate::framebuffer::FramebufferData;
-use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
 use crate::image_buffer::{Image,};
 use crate::material::MaterialRef;
+use crate::pipelines::graphics_pipeline::GraphicsPipeline;
+use crate::pipelines::PipelineType;
 use crate::renderpass::RenderPass;
 use crate::swapchain::Swapchain;
 use crate::render_resources::RenderResources;

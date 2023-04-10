@@ -3,7 +3,7 @@ use winit::dpi::PhysicalSize;
 use winit::window::Window;
 use crate::material::{Material, MaterialRef};
 use crate::mesh::Mesh;
-use crate::graphics_pipeline::PipelineType;
+use crate::pipelines::PipelineType;
 use crate::render_resources::RenderResources;
 use crate::renderer::Renderer;
 use crate::shader::ShaderRef;
@@ -13,7 +13,6 @@ mod core;
 mod framebuffer;
 mod swapchain;
 mod renderpass;
-pub mod graphics_pipeline;
 pub mod vertex;
 mod buffer;
 mod descriptors;
@@ -24,6 +23,7 @@ pub mod material;
 mod helper;
 pub mod shader;
 mod render_resources;
+pub mod pipelines;
 
 
 pub struct RendererConfig {

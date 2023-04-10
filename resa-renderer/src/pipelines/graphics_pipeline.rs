@@ -8,16 +8,10 @@ use gfx_hal::pass::Subpass;
 use gfx_hal::pso::{BlendState, ColorBlendDesc, ColorMask, Comparison, DepthStencilDesc, DepthTest, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags, Specialization };
 use crate::core::CoreDevice;
 use crate::helper::MVP;
+use crate::pipelines::PipelineType;
 use crate::vertex::Vertex;
 
-#[derive(Hash)]
-#[derive(Copy, Clone)]
-#[derive(Eq, PartialEq)]
-pub enum PipelineType{
-	Opaque,
-	Transparent,
-	UI,
-}
+
 
 pub struct GraphicsPipeline<B: Backend> {
 	pub pipeline: Option<B::GraphicsPipeline>,
