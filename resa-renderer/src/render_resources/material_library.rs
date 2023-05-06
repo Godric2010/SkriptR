@@ -14,6 +14,7 @@ struct MaterialEntry {
 	material: Material,
 	ubo_ref: UBORef,
 	texture_ref: TBORef,
+	render_stage_index: u16
 }
 
 pub struct MaterialLibrary<B: Backend> {
@@ -33,15 +34,15 @@ impl<B: Backend> MaterialLibrary<B> {
 		}
 	}
 
-	pub fn add_materials(&mut self, materials: &[Material]) -> Vec<MaterialRef> {
-		let materials_ubo_data = materials.iter().map(|mat| (mat.get_ubo_data())).collect();
+	pub fn add_materials(&mut self, materials: &[(Material, u16)]) -> Vec<MaterialRef> {
+		let materials_ubo_data = materials.iter().map(|mat| (mat.0.get_ubo_data())).collect();
 		let ubo_refs = self.ubo_library.add_buffers(materials_ubo_data);
 
-		let materials_tbo_data = materials.iter().map(|mat| mat.texture.clone()).collect();
+		let materials_tbo_data = materials.iter().map(|mat| mat.0.texture.clone()).collect();
 		let tbo_refs = self.tbo_library.add_texture_buffer(materials_tbo_data);
 
 		let mut material_refs = vec![];
-		for (index, material) in materials.iter().enumerate() {
+		for (index, (material, render_stage_id)) in materials.iter().enumerate() {
 			let material_ref = MaterialRef(self.last_entry_id);
 			self.last_entry_id += 1;
 
@@ -49,6 +50,7 @@ impl<B: Backend> MaterialLibrary<B> {
 				material: material.clone(),
 				ubo_ref: ubo_refs[index],
 				texture_ref: tbo_refs[index],
+				render_stage_index: render_stage_id.clone(),
 			};
 
 			self.material_map.insert(material_ref, entry);
@@ -88,10 +90,4 @@ impl<B: Backend> MaterialLibrary<B> {
 
 		vec![texture_buffer.get_layout(), uniform_buffer.get_layout()]
 	}
-
-	/*pub(crate) fn add_new_texture(&mut self, image_data: Vec<u8>, renderer: &mut Renderer<backend::Backend>) -> usize {
-		let img = image::load(Cursor::new(&image_data[..]), image::ImageFormat::Png).unwrap().to_rgba8();
-		let buffer_index = renderer.add_image_buffer(img);
-		buffer_index
-	}*/
 }

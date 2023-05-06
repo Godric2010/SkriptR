@@ -23,7 +23,8 @@ use crate::framebuffer::FramebufferData;
 use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
 use crate::image_buffer::{Image,};
-use crate::material::MaterialRef;
+use crate::material::{Material, MaterialRef};
+use crate::render_passes_and_pipelines::RenderStageController;
 use crate::renderpass::RenderPass;
 use crate::swapchain::Swapchain;
 use crate::render_resources::RenderResources;
@@ -32,6 +33,7 @@ pub struct Renderer<B: Backend> {
 	core: Core<B>,
 	device: Rc<RefCell<CoreDevice<B>>>,
 	swapchain: Swapchain,
+	render_stage_controller: RenderStageController<B>,
 	render_pass: RenderPass<B>,
 	framebuffer_data: FramebufferData<B>,
 	viewport: Viewport,
@@ -52,7 +54,7 @@ impl<B: Backend> Renderer<B> {
 		// Create swapchain and render pass and pipelines
 		let swapchain = Swapchain::new(&mut *core.surface, &*device.borrow(), extent);
 		let depth_image = Renderer::<B>::create_depth_image(device.clone(), &core.adapter, swapchain.extent);
-		let render_pass = RenderPass::new(&swapchain, &depth_image, Rc::clone(&device));
+		let render_pass = RenderPass::new(&swapchain.format, &depth_image.format, Rc::clone(&device));
 
 		let framebuffer_attachments = vec![swapchain.framebuffer_attachment.clone(), FramebufferAttachment {
 			usage: gfx_hal::image::Usage::DEPTH_STENCIL_ATTACHMENT,
@@ -72,6 +74,7 @@ impl<B: Backend> Renderer<B> {
 			core,
 			device,
 			swapchain,
+			render_stage_controller: RenderStageController::new(),
 			render_pass,
 			framebuffer_data,
 			viewport,
@@ -96,6 +99,9 @@ impl<B: Backend> Renderer<B> {
 		self.core.adapter.limits.clone()
 	}
 
+	pub fn get_material_render_stage_index(&mut self, material: &Material) -> u16{
+		0
+	}
 
 	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, resources: &RenderResources<B>) {
 
@@ -111,30 +117,13 @@ impl<B: Backend> Renderer<B> {
 		));
 	}
 
-	// pub fn update_pipeline(&mut self, ubo_ids: &[usize], tex_ids: &[usize], pipeline_type: &PipelineType, resources: &RenderResources<B>) {
-	// 	let device = &self.device.borrow().device;
-	// 	device.wait_idle().unwrap();
-	// 	let shader_ref = resources.shader_lib.get_by_id(&0).unwrap();
-	// 	let desc_layouts = resources.material_lib.get_descriptor_layouts();
-	//
-	// 	let pipeline_idx = self.pipelines.iter().position(|pipe| &pipe.pipeline_type == pipeline_type).unwrap();
-	//
-	// 	self.pipelines[pipeline_idx] = GraphicsPipeline::new(
-	// 		desc_layouts.into_iter(),
-	// 		self.render_pass.render_pass.as_ref().unwrap(),
-	// 		Rc::clone(&self.device),
-	// 		&shader_ref.vertex.clone(),
-	// 		&shader_ref.fragment.clone(),
-	// 	);
-	// }
-
 	pub fn recreate_swapchain(&mut self, dimensions: Extent2D) {
 		let device = &self.device.borrow().device;
 		device.wait_idle().unwrap();
 
 		self.swapchain = Swapchain::new(&mut *self.core.surface, &*self.device.borrow(), dimensions);
 		self.depth_image = Renderer::<B>::create_depth_image(self.device.clone(), &self.core.adapter, self.swapchain.extent);
-		self.render_pass = RenderPass::new(&self.swapchain, &self.depth_image, Rc::clone(&self.device));
+		self.render_pass = RenderPass::new(&self.swapchain.format, &self.depth_image.format, Rc::clone(&self.device));
 
 		let new_fb = unsafe {
 			device.destroy_framebuffer(self.framebuffer_data.framebuffer.take().unwrap());

@@ -4,6 +4,7 @@ use std::ops::Range;
 use std::rc::Rc;
 use gfx_hal::Backend;
 use gfx_hal::device::Device;
+use gfx_hal::format::Format;
 use gfx_hal::image::{Access, Layout};
 use gfx_hal::memory::Dependencies;
 use gfx_hal::pass::{Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, SubpassDependency, SubpassDesc};
@@ -19,10 +20,10 @@ pub struct RenderPass<B: Backend> {
 
 // This can be optimized for multiple render pass usage. A render pass builder of some sort would be nice.
 impl<B: Backend> RenderPass<B> {
-	pub fn new(swapchain: &Swapchain, depth_image: &Image<B>, device: Rc<RefCell<CoreDevice<B>>>) -> Self {
+	pub fn new(color_format: &Format, depth_format: &Format, device: Rc<RefCell<CoreDevice<B>>>) -> Self {
 		let mut render_pass = {
 			let color_attachment = Attachment {
-				format: Some(swapchain.format.clone()),
+				format: Some(color_format.clone()),
 				samples: 1,
 				ops: AttachmentOps::new(
 					AttachmentLoadOp::Clear,
@@ -33,11 +34,11 @@ impl<B: Backend> RenderPass<B> {
 			};
 
 			let depth_attachment = Attachment {
-				format: Some(depth_image.format),
+				format: Some(depth_format.clone()),
 				samples: 1,
 				ops: AttachmentOps{
 					load: AttachmentLoadOp::Clear,
-					store: AttachmentStoreOp::Store
+					store: AttachmentStoreOp::DontCare,
 				},
 				stencil_ops: AttachmentOps{
 					load: AttachmentLoadOp::Clear,

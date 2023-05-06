@@ -1,6 +1,7 @@
 use crate::graphics_pipeline::PipelineType;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use crate::render_passes_and_pipelines::RenderStage;
 use crate::render_resources::texture_buffer_library::TBORef;
 
 #[derive(Hash)]
@@ -50,7 +51,7 @@ pub struct MaterialRef(pub(crate) usize);
 #[derive(Clone)]
 pub struct Material {
 	pub shader_id: u32,
-	pub pipeline_type: PipelineType,
+	pub render_stage: RenderStage,
 	pub color: Color,
 	pub texture: Texture,
 }
@@ -76,7 +77,5 @@ impl Material {
 
 		own_hash == other_hash
 	}
-
-	// TODO: Implement set color and set texture functions here!
 }
 

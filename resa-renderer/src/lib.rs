@@ -4,6 +4,7 @@ use winit::window::Window;
 use crate::material::{Material, MaterialRef};
 use crate::mesh::Mesh;
 use crate::graphics_pipeline::PipelineType;
+use crate::render_passes_and_pipelines::RenderStage;
 use crate::render_resources::RenderResources;
 use crate::renderer::Renderer;
 use crate::shader::ShaderRef;
@@ -24,6 +25,7 @@ pub mod material;
 mod helper;
 pub mod shader;
 mod render_resources;
+pub mod render_passes_and_pipelines;
 
 
 pub struct RendererConfig {
@@ -42,12 +44,12 @@ impl ResaRenderer {
 	pub fn new(window: &Window, config: RendererConfig) -> Self {
 
 		let extent = Extent2D{width: config.extent.width, height: config.extent.height};
-		let pipe_types = vec![PipelineType::Opaque];//material_controller.get_registered_pipeline_types();
+		let pipe_types = vec![RenderStage::Opaque, RenderStage::Transparent];//material_controller.get_registered_pipeline_types();
 
 		let mut renderer = Renderer::new(window, extent);
 		let render_resources = RenderResources::new(config.shaders, &renderer);
 		for pipeline_type in pipe_types.iter() {
-			renderer.create_pipeline(pipeline_type, &render_resources);
+			// renderer.create_pipeline(pipeline_type, &render_resources);
 		}
 
 		ResaRenderer {
@@ -61,7 +63,13 @@ impl ResaRenderer {
 	}
 
 	pub fn register_materials(&mut self, materials: &[Material]) -> Vec<MaterialRef> {
-		self.render_resources.material_lib.add_materials(materials)
+		let mut materials_and_stage_ids = vec![];
+		for mat in materials {
+			let stage_index = self.renderer.get_material_render_stage_index(mat);
+			materials_and_stage_ids.push((mat.clone(), stage_index));
+		}
+
+		self.render_resources.material_lib.add_materials(&materials_and_stage_ids)
 	}
 
 	pub fn get_material_mut(&mut self, material_id: &MaterialRef) -> &mut Material{

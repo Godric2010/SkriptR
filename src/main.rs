@@ -7,6 +7,7 @@ use rendering::camera::Camera;
 use rendering::transform::Transform;
 use resa_renderer::graphics_pipeline::PipelineType;
 use resa_renderer::material::{Color, Material, Texture};
+use resa_renderer::render_passes_and_pipelines::RenderStage;
 
 mod rendering;
 mod resa_app;
@@ -32,21 +33,21 @@ fn main() {
 
 	let material = Material {
 		shader_id: 1,
-		pipeline_type: PipelineType::Opaque,
-		color: Color::new(255, 0, 0, 255),
+		render_stage: RenderStage::Transparent,
+		color: Color::new(255, 0, 0, 150),
 		texture: Texture::None,
 	};
 
 	let material02 = Material {
 		shader_id: 1,
-		pipeline_type: PipelineType::Opaque,
+		render_stage: RenderStage::Opaque,
 		color: Color::new(0, 0, 0, 255),
 		texture: Texture::None,
 	};
 
 	let material03 = Material {
 		shader_id: 1,
-		pipeline_type: PipelineType::Opaque,
+		render_stage: RenderStage::Opaque,
 		color: Color::new(255, 255, 255, 255),
 		texture: Texture::Pending(wood_tex),//wood_tex,
 	};
