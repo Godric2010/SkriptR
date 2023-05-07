@@ -1,5 +1,8 @@
 use std::cell::RefCell;
 use std::{iter};
+use std::fmt::Debug;
+use std::mem::size_of;
+use std::ops::Range;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -9,23 +12,27 @@ use gfx_hal::buffer::{SubRange};
 use gfx_hal::command::{ClearColor, ClearDepthStencil, ClearValue, CommandBuffer, CommandBufferFlags, Level, RenderAttachmentInfo, SubpassContents};
 use gfx_hal::device::Device;
 use gfx_hal::format::{Aspects, Format, ImageFeature};
-use gfx_hal::image::{Extent, FramebufferAttachment, Tiling, ViewCapabilities};
-use gfx_hal::memory::Properties;
-use gfx_hal::pool::{CommandPool, };
+use gfx_hal::image::{Access, Extent, FramebufferAttachment, Layout, Tiling, ViewCapabilities};
+use gfx_hal::memory::{Dependencies, Properties};
+use gfx_hal::pass::{Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, Subpass, SubpassDependency, SubpassDesc};
+use gfx_hal::pool::{CommandPool};
 use gfx_hal::prelude::PresentationSurface;
-use gfx_hal::pso::{ ColorValue, ShaderStageFlags, Viewport};
+use gfx_hal::pso::{BlendState, ColorBlendDesc, ColorMask, ColorValue, Comparison, PipelineStage, ShaderStageFlags, Viewport};
 use gfx_hal::queue::Queue;
 use gfx_hal::window::Extent2D;
 use winit::window::Window;
 
 use crate::core::{Core, CoreAdapter, CoreDevice};
 use crate::framebuffer::FramebufferData;
-use crate::graphics_pipeline::{GraphicsPipeline, PipelineType};
 use crate::helper::MVP;
-use crate::image_buffer::{Image,};
+use crate::image_buffer::{Image};
 use crate::material::{Material, MaterialRef};
-use crate::render_passes_and_pipelines::RenderStageController;
-use crate::renderpass::RenderPass;
+use crate::pipelines::PipelineType;
+use crate::render_passes_and_pipelines::{RenderStage, RenderStageController};
+use crate::render_passes_and_pipelines::graphics_pipeline::GraphicsPipeline;
+use crate::render_passes_and_pipelines::pipeline_builder::{PipelineBuilder, PipelineLayoutDesc};
+use crate::render_passes_and_pipelines::render_pass::RenderPass;
+use crate::render_passes_and_pipelines::render_pass_builder::RenderPassBuilder;
 use crate::swapchain::Swapchain;
 use crate::render_resources::RenderResources;
 
@@ -87,34 +94,36 @@ impl<B: Backend> Renderer<B> {
 		}
 	}
 
-	pub fn get_device(&self) -> Rc<RefCell<CoreDevice<B>>>{
+	pub fn get_device(&self) -> Rc<RefCell<CoreDevice<B>>> {
 		self.device.clone()
 	}
 
-	pub fn get_memory_types(&self) -> Vec<MemoryType>{
+	pub fn get_memory_types(&self) -> Vec<MemoryType> {
 		self.core.adapter.memory_types.clone()
 	}
 
-	pub fn get_adapter_limits(&self) -> Limits{
+	pub fn get_adapter_limits(&self) -> Limits {
 		self.core.adapter.limits.clone()
 	}
 
-	pub fn get_material_render_stage_index(&mut self, material: &Material) -> u16{
+	pub fn get_material_render_stage_index(&mut self, material: &Material, resources: &RenderResources<B>) -> u16 {
+		let pipeline_stage_index = self.render_stage_controller.get_render_index_from_pipeline(&material.render_stage);
+		if pipeline_stage_index.is_some() {
+			return pipeline_stage_index.unwrap();
+		}
+
+		let result = self.render_stage_controller.get_render_pass_from_stage(&material.render_stage);
+		let render_pass = match result {
+			Some(rp) => rp,
+			None => {
+				let rp = self.create_render_pass(&material.render_stage);
+				let id = self.render_stage_controller.add_render_pass(rp);
+				self.render_stage_controller.get_render_pass(id)
+			}
+		};
+
+
 		0
-	}
-
-	pub fn create_pipeline(&mut self, pipeline_type: &PipelineType, resources: &RenderResources<B>) {
-
-		let shader_ref = resources.shader_lib.get_by_id(&0).unwrap();
-		let desc_layouts = resources.material_lib.get_descriptor_layouts();
-
-		self.pipelines.push(GraphicsPipeline::new(
-			desc_layouts.into_iter(),
-			self.render_pass.render_pass.as_ref().unwrap(),
-			Rc::clone(&self.device),
-			&shader_ref.vertex.clone(),
-			&shader_ref.fragment.clone(),
-		));
 	}
 
 	pub fn recreate_swapchain(&mut self, dimensions: Extent2D) {
@@ -123,7 +132,7 @@ impl<B: Backend> Renderer<B> {
 
 		self.swapchain = Swapchain::new(&mut *self.core.surface, &*self.device.borrow(), dimensions);
 		self.depth_image = Renderer::<B>::create_depth_image(self.device.clone(), &self.core.adapter, self.swapchain.extent);
-		self.render_pass = RenderPass::new(&self.swapchain.format, &self.depth_image.format, Rc::clone(&self.device));
+		// self.render_pass = RenderPass::new(&self.swapchain.format, &self.depth_image.format, Rc::clone(&self.device));
 
 		let new_fb = unsafe {
 			device.destroy_framebuffer(self.framebuffer_data.framebuffer.take().unwrap());
@@ -145,8 +154,83 @@ impl<B: Backend> Renderer<B> {
 	fn create_depth_image(device: Rc<RefCell<CoreDevice<B>>>, adapter: &CoreAdapter<B>, dimensions: Extent) -> Image<B> {
 		let depth_formats = [Format::D24UnormS8Uint, Format::D32SfloatS8Uint, Format::D32Sfloat];
 		let depth_format = device.borrow().find_supported_format(&depth_formats, Tiling::Optimal, ImageFeature::DEPTH_STENCIL_ATTACHMENT);
-		let depth_image = Image::new(device.clone(), 	&adapter.memory_types, dimensions, depth_format, Tiling::Optimal, gfx_hal::image::Usage::DEPTH_STENCIL_ATTACHMENT, Properties::DEVICE_LOCAL, Aspects::DEPTH, gfx_hal::image::Usage::SAMPLED);
+		let depth_image = Image::new(device.clone(), &adapter.memory_types, dimensions, depth_format, Tiling::Optimal, gfx_hal::image::Usage::DEPTH_STENCIL_ATTACHMENT, Properties::DEVICE_LOCAL, Aspects::DEPTH, gfx_hal::image::Usage::SAMPLED);
 		depth_image
+	}
+
+	fn create_render_pass(&self, render_stage: &RenderStage) -> RenderPass<B> {
+		let color_attachment = Attachment {
+			format: Some(self.swapchain.format.clone()),
+			samples: 1,
+			ops: AttachmentOps::new(AttachmentLoadOp::Clear, AttachmentStoreOp::Store),
+			stencil_ops: AttachmentOps::DONT_CARE,
+			layouts: Layout::Undefined..Layout::ColorAttachmentOptimal,
+		};
+
+		let depth_attachment = Attachment {
+			format: Some(self.depth_image.format.clone()),
+			samples: 1,
+			ops: AttachmentOps::new(AttachmentLoadOp::Clear, AttachmentStoreOp::DontCare),
+			stencil_ops: AttachmentOps::DONT_CARE,
+			layouts: Layout::Undefined..Layout::DepthStencilAttachmentOptimal,
+		};
+
+		let subpass = SubpassDesc {
+			colors: &[(0, Layout::ColorAttachmentOptimal)],
+			depth_stencil: Some(&(1, Layout::DepthStencilAttachmentOptimal)),
+			inputs: &[],
+			resolves: &[],
+			preserves: &[],
+		};
+
+		let dependency = SubpassDependency {
+			passes: Range { start: None, end: Some(0) },
+			stages: Range { start: PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS, end: PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS },
+			accesses: Range { start: Access::empty(), end: Access::COLOR_ATTACHMENT_WRITE | Access::DEPTH_STENCIL_ATTACHMENT_WRITE },
+			flags: Dependencies::VIEW_LOCAL,
+		};
+
+
+		let render_pass = RenderPassBuilder::new(self.device.clone())
+			.add_attachment(color_attachment)
+			.add_attachment(depth_attachment)
+			.set_render_stage(render_stage.clone())
+			.add_subpass(subpass)
+			.add_dependency(dependency)
+			.add_name(&render_stage.to_string())
+			.build();
+
+		match render_pass {
+			Ok(rp) => rp,
+			Err(e) => {
+				panic!("Could not create {}", &render_stage.to_string());
+			}
+		}
+	}
+
+	fn create_graphics_pipeline(&self, material: &Material, render_pass: &RenderPass<B>, resources: &RenderResources<B>) -> GraphicsPipeline<B> {
+
+		let layout_desc = PipelineLayoutDesc::new(
+			resources.material_lib.get_descriptor_layouts(),
+			size_of::<MVP>() as u32,
+		);
+
+		let shader_ref = resources.shader_lib.get_by_id(&material.shader_id).unwrap();
+
+		let pipeline = PipelineBuilder::new(self.device.clone(), layout_desc)
+			.add_render_pass(render_pass)
+			.set_render_stage(material.render_stage.clone())
+			.add_vertex_shader(&shader_ref.vertex)
+			.add_fragment_shader(&shader_ref.fragment)
+			.add_color_blend_state(ColorMask::ALL, BlendState::ALPHA)
+			.add_depth_desc(Comparison::LessEqual, true)
+			.build();
+
+		match pipeline{
+			Some(pipeline) => pipeline,
+			None => panic!("Could not create pipeline for {}", &material.render_stage.to_string()),
+		}
+
 	}
 
 	pub fn draw(&mut self, render_objects: &[(u64, MaterialRef, [[f32; 4]; 4])], view_mat: [[f32; 4]; 4], projection_mat: [[f32; 4]; 4], resource_binding: &RenderResources<B>) {

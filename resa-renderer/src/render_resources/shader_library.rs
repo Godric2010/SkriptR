@@ -33,8 +33,8 @@ impl ShaderLibrary {
  ///
  /// returns: Option<&ShaderRef>
 
-	pub fn get_by_id(&self, shader_id: &usize) -> Option<&ShaderRef>{
-		if shader_id >= &self.shader_refs.len(){
+	pub fn get_by_id(&self, shader_id: &u32) -> Option<&ShaderRef>{
+		if &(shader_id as usize) >= &self.shader_refs.len(){
 			return None
 		}
 

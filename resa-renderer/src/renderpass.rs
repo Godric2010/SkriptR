@@ -10,8 +10,6 @@ use gfx_hal::memory::Dependencies;
 use gfx_hal::pass::{Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, SubpassDependency, SubpassDesc};
 use gfx_hal::pso::PipelineStage;
 use crate::core::CoreDevice;
-use crate::image_buffer::Image;
-use crate::swapchain::Swapchain;
 
 pub struct RenderPass<B: Backend> {
 	pub render_pass: Option<B::RenderPass>,

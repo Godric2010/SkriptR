@@ -3,7 +3,6 @@ use winit::dpi::PhysicalSize;
 use winit::window::Window;
 use crate::material::{Material, MaterialRef};
 use crate::mesh::Mesh;
-use crate::graphics_pipeline::PipelineType;
 use crate::render_passes_and_pipelines::RenderStage;
 use crate::render_resources::RenderResources;
 use crate::renderer::Renderer;
@@ -14,7 +13,6 @@ mod core;
 mod framebuffer;
 mod swapchain;
 mod renderpass;
-pub mod graphics_pipeline;
 pub mod vertex;
 mod buffer;
 mod descriptors;
@@ -26,6 +24,7 @@ mod helper;
 pub mod shader;
 mod render_resources;
 pub mod render_passes_and_pipelines;
+mod pipelines;
 
 
 pub struct RendererConfig {
@@ -65,7 +64,7 @@ impl ResaRenderer {
 	pub fn register_materials(&mut self, materials: &[Material]) -> Vec<MaterialRef> {
 		let mut materials_and_stage_ids = vec![];
 		for mat in materials {
-			let stage_index = self.renderer.get_material_render_stage_index(mat);
+			let stage_index = self.renderer.get_material_render_stage_index(mat, &self.render_resources);
 			materials_and_stage_ids.push((mat.clone(), stage_index));
 		}
 

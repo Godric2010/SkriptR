@@ -5,7 +5,6 @@ use resa_renderer::mesh::{create_primitive_cube, create_primitive_quad, create_p
 
 use rendering::camera::Camera;
 use rendering::transform::Transform;
-use resa_renderer::graphics_pipeline::PipelineType;
 use resa_renderer::material::{Color, Material, Texture};
 use resa_renderer::render_passes_and_pipelines::RenderStage;
 
