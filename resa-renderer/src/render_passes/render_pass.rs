@@ -3,7 +3,7 @@ use std::rc::Rc;
 use gfx_hal::Backend;
 use gfx_hal::device::Device;
 use crate::core::CoreDevice;
-use crate::render_passes_and_pipelines::RenderStage;
+use crate::render_stage::RenderStage;
 
 pub struct RenderPass<B: Backend> {
 	pass: Option<B::RenderPass>,

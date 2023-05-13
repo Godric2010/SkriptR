@@ -3,16 +3,13 @@ use winit::dpi::PhysicalSize;
 use winit::window::Window;
 use crate::material::{Material, MaterialRef};
 use crate::mesh::Mesh;
-use crate::render_passes_and_pipelines::RenderStage;
 use crate::render_resources::RenderResources;
 use crate::renderer::Renderer;
 use crate::shader::ShaderRef;
 
 mod renderer;
 mod core;
-mod framebuffer;
 mod swapchain;
-mod renderpass;
 pub mod vertex;
 mod buffer;
 mod descriptors;
@@ -23,9 +20,9 @@ pub mod material;
 mod helper;
 pub mod shader;
 mod render_resources;
-pub mod render_passes_and_pipelines;
-mod pipelines;
-
+pub mod pipelines;
+mod render_passes;
+pub mod render_stage;
 
 pub struct RendererConfig {
 	pub extent: PhysicalSize<u32>,
@@ -43,13 +40,8 @@ impl ResaRenderer {
 	pub fn new(window: &Window, config: RendererConfig) -> Self {
 
 		let extent = Extent2D{width: config.extent.width, height: config.extent.height};
-		let pipe_types = vec![RenderStage::Opaque, RenderStage::Transparent];//material_controller.get_registered_pipeline_types();
-
-		let mut renderer = Renderer::new(window, extent);
+		let renderer = Renderer::new(window, extent);
 		let render_resources = RenderResources::new(config.shaders, &renderer);
-		for pipeline_type in pipe_types.iter() {
-			// renderer.create_pipeline(pipeline_type, &render_resources);
-		}
 
 		ResaRenderer {
 			renderer,

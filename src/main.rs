@@ -6,12 +6,12 @@ use resa_renderer::mesh::{create_primitive_cube, create_primitive_quad, create_p
 use rendering::camera::Camera;
 use rendering::transform::Transform;
 use resa_renderer::material::{Color, Material, Texture};
-use resa_renderer::render_passes_and_pipelines::RenderStage;
+use resa_renderer::render_stage::RenderStage;
 
 mod rendering;
 mod resa_app;
 mod resource_loader;
-mod Event;
+mod event;
 mod test_anim;
 
 
@@ -31,21 +31,21 @@ fn main() {
 	world.borrow_mut().add_component(&camera_entity, transform);
 
 	let material = Material {
-		shader_id: 1,
+		shader_id: 0,
 		render_stage: RenderStage::Transparent,
-		color: Color::new(255, 0, 0, 150),
+		color: Color::new(125, 125, 125, 150),
 		texture: Texture::None,
 	};
 
 	let material02 = Material {
-		shader_id: 1,
+		shader_id: 0,
 		render_stage: RenderStage::Opaque,
 		color: Color::new(0, 0, 0, 255),
 		texture: Texture::None,
 	};
 
 	let material03 = Material {
-		shader_id: 1,
+		shader_id: 0,
 		render_stage: RenderStage::Opaque,
 		color: Color::new(255, 255, 255, 255),
 		texture: Texture::Pending(wood_tex),//wood_tex,

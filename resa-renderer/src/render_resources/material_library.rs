@@ -8,6 +8,7 @@ use crate::image_buffer::ImageBuffer;
 use crate::material::{Material, MaterialRef};
 use crate::render_resources::texture_buffer_library::{TBORef, TextureBufferLibrary};
 use crate::render_resources::uniform_buffer_library::{UBORef, UniformBufferLibrary};
+use crate::render_stage::RenderStage;
 use crate::uniform::Uniform;
 
 struct MaterialEntry {
@@ -67,6 +68,7 @@ impl<B: Backend> MaterialLibrary<B> {
 		entry.material = new_material;
 	}
 
+	#[allow(dead_code, unused)]
 	pub fn remove_material(&mut self, material_ref: MaterialRef) {
 		todo!()
 	}
@@ -79,9 +81,9 @@ impl<B: Backend> MaterialLibrary<B> {
 		Some(&mut self.material_map.get_mut(material_ref)?.material)
 	}
 
-	pub(crate) fn get_render_data(&self, material_ref: &MaterialRef) -> (&Uniform<B>, &ImageBuffer<B>) {
+	pub(crate) fn get_render_data(&self, material_ref: &MaterialRef) -> (&Uniform<B>, &ImageBuffer<B>, &RenderStage) {
 		let entry = &self.material_map[material_ref];
-		(self.ubo_library.get_uniform_buffer(&entry.ubo_ref), self.tbo_library.get_texture_buffer(&entry.texture_ref))
+		(self.ubo_library.get_uniform_buffer(&entry.ubo_ref), self.tbo_library.get_texture_buffer(&entry.texture_ref), &entry.material.render_stage)
 	}
 
 	pub(crate) fn get_descriptor_layouts(&self) -> Vec<&<B as Backend>::DescriptorSetLayout> {

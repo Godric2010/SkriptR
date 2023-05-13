@@ -2,7 +2,7 @@ use std::{env, fs};
 use std::collections::HashMap;
 use std::path::{Path};
 use resa_renderer::shader::ShaderRef;
-use crate::Event::Event;
+use crate::event::Event;
 
 pub struct ResourceLoader {
 	resources_path: String,

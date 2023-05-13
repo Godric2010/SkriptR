@@ -6,8 +6,8 @@ use gfx_hal::device::{Device};
 use gfx_hal::pass::Subpass;
 use gfx_hal::pso::{BlendState, ColorBlendDesc, ColorMask, Comparison, DepthStencilDesc, DepthTest, EntryPoint, GraphicsPipelineDesc, InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, ShaderStageFlags};
 use crate::core::CoreDevice;
-use crate::render_passes_and_pipelines::graphics_pipeline::GraphicsPipeline;
-use crate::render_passes_and_pipelines::RenderStage;
+use crate::pipelines::graphics_pipeline::GraphicsPipeline;
+use crate::render_stage::RenderStage;
 use crate::vertex::Vertex;
 
 pub struct PipelineLayoutDesc<'a, B: Backend> {
@@ -36,10 +36,11 @@ pub struct PipelineBuilder<'a, B: Backend> {
 	color_blend_desc: Option<ColorBlendDesc>,
 	depth_desc: Option<DepthTest>,
 	stage: RenderStage,
+	render_pass_id: usize,
 }
 
 impl<'a, B: Backend> PipelineBuilder<'a, B> {
-	pub fn new<Is>(device: Rc<RefCell<CoreDevice<B>>>, pipeline_layout_desc: PipelineLayoutDesc<'a, B>) -> Self {
+	pub fn new(device: Rc<RefCell<CoreDevice<B>>>, pipeline_layout_desc: PipelineLayoutDesc<'a, B>) -> Self {
 		PipelineBuilder {
 			device: device.clone(),
 			pipeline_desc: None,
@@ -50,14 +51,16 @@ impl<'a, B: Backend> PipelineBuilder<'a, B> {
 			color_blend_desc: None,
 			depth_desc: None,
 			stage: RenderStage::None,
+			render_pass_id: 0
 		}
 	}
 
-	pub fn add_render_pass(&mut self, render_pass: &'a <B as Backend>::RenderPass) -> &mut Self {
+	pub fn add_render_pass(&mut self, render_pass: &'a <B as Backend>::RenderPass, render_pass_id: usize) -> &mut Self {
 		self.subpass = Some(Subpass {
 			index: 0,
 			main_pass: render_pass,
 		});
+		self.render_pass_id = render_pass_id;
 		self
 	}
 
@@ -156,13 +159,13 @@ impl<'a, B: Backend> PipelineBuilder<'a, B> {
 			device.destroy_shader_module(fragment_shader_mod);
 		}
 
-		Some(GraphicsPipeline::new(self.device.clone(), pipeline, pipeline_layout, self.stage))
+		Some(GraphicsPipeline::new(self.device.clone(), pipeline, pipeline_layout, self.stage, self.render_pass_id))
 	}
 
 	fn create_shader_module(&self, device: &B::Device, shader: &[u32]) -> Option<<B as Backend>::ShaderModule> {
 		return match unsafe { device.create_shader_module(shader) } {
 			Ok(module) => Some(module),
-			Err(e) => {
+			Err(_) => {
 				println!("Failed to create shader module!");
 				None
 			}

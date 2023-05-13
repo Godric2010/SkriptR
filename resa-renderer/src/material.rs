@@ -1,7 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use crate::render_passes_and_pipelines::RenderStage;
 use crate::render_resources::texture_buffer_library::TBORef;
+use crate::render_stage::RenderStage;
 
 #[derive(Hash)]
 #[derive(Copy, Clone)]
