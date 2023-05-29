@@ -50,9 +50,9 @@ pub fn create_primitive_cube() -> Mesh {
 pub fn create_primitive_quad() -> Mesh {
 	let vertices = vec![
 		Vertex { position: Vector3::new(-1.0, -1.0, 0.0), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(-1.0, 1.0, 0.0), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(1.0, 1.0, 0.0), uv: Vector2::new(0.0, 0.0) },
-		Vertex { position: Vector3::new(1.0, -1.0, 0.0), uv: Vector2::new(0.0, 0.0) },
+		Vertex { position: Vector3::new(-1.0, 1.0, 0.0), uv: Vector2::new(0.0, 1.0) },
+		Vertex { position: Vector3::new(1.0, 1.0, 0.0), uv: Vector2::new(1.0, 1.0) },
+		Vertex { position: Vector3::new(1.0, -1.0, 0.0), uv: Vector2::new(1.0, 0.0) },
 	];
 	let triangle_list = vec![0, 1, 2, 0, 2, 3];
 	Mesh::new(vertices, triangle_list)

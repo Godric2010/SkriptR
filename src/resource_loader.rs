@@ -1,8 +1,9 @@
 use std::{env, fs};
 use std::collections::HashMap;
 use std::path::{Path};
+use rusttype::Font;
+use resa_renderer::material::TextureFormat;
 use resa_renderer::shader::ShaderRef;
-use crate::event::Event;
 
 pub struct ResourceLoader {
 	resources_path: String,
@@ -64,7 +65,7 @@ impl ResourceLoader {
 	}
 
 
-	pub fn load_image(&self, image_file_name: &str) -> Option<Vec<u8>>{
+	pub fn load_image(&self, image_file_name: &str) -> Option<(Vec<u8>, TextureFormat)>{
 		let image_path = self.resources_path.clone() + "/"+ image_file_name;
 		if !fs::metadata(&image_path).is_ok(){
 			return None;
@@ -78,6 +79,22 @@ impl ResourceLoader {
 			}
 		};
 
-		Some(image_bytes)
+		Some((image_bytes, TextureFormat::Png))
+	}
+
+	pub fn load_font(&self, font_name: &str) -> Option<Vec<u8>>{
+		let font_path = self.resources_path.clone() + "/fonts/" + font_name + ".ttf";
+		if !fs::metadata(&font_path).is_ok(){
+			return None;
+		}
+
+		let font_bytes = match fs::read(Path::new(&font_path)){
+			Ok(font_bytes) => font_bytes,
+			Err(_) => {
+				println!("Could not load font {}", font_name);
+				return None;
+			}
+		};
+		Some(font_bytes)
 	}
 }

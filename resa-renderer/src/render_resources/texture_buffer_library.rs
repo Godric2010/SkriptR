@@ -7,11 +7,11 @@ use gfx_hal::buffer::Usage;
 use gfx_hal::device::Device;
 use gfx_hal::pool::CommandPoolCreateFlags;
 use gfx_hal::pso::{DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ImageDescriptorType, ShaderStageFlags};
-use image::{Rgba, RgbaImage};
+use image::{Pixel, Rgba, RgbaImage};
 use crate::core::CoreDevice;
 use crate::descriptors::{DescSet, DescSetLayout};
 use crate::image_buffer::ImageBuffer;
-use crate::material::Texture;
+use crate::material::{Texture, TextureFormat};
 
 #[derive(Copy, Clone, Hash)]
 pub struct TBORef(usize, usize);
@@ -40,7 +40,8 @@ impl<B: Backend> TextureBufferLibrary<B> {
 			};
 
 		let mut pool = instance.create_image_desc_pool(1);
-		let image_buffer = instance.create_image_buffer(vec![], &mut pool);
+		let rgba_image = RgbaImage::from_pixel(1, 1, Rgba::from([255, 255, 255, 255]));
+		let image_buffer = instance.create_image_buffer(rgba_image, &mut pool);
 
 		instance.entries.push(TextureEntry {
 			image_descriptor_pool: pool.unwrap(),
@@ -62,11 +63,14 @@ impl<B: Backend> TextureBufferLibrary<B> {
 			let tbo_ref = match new_tbo {
 				Texture::None => TBORef(0, 0),
 				Texture::Some(tbo_ref) => tbo_ref,
-				Texture::Pending(image_data) => {
+				Texture::Pending(image_data, tex_format) => {
 					if descriptor_pool.is_none() {
 						descriptor_pool = self.create_image_desc_pool(required_capacity);
 					}
-					let image_buffer = self.create_image_buffer(image_data, &mut descriptor_pool);
+
+					let rgba_image = self.build_rgba_image(image_data, tex_format);
+
+					let image_buffer = self.create_image_buffer(rgba_image, &mut descriptor_pool);
 					let buffer_index = new_image_buffers.len();
 					new_image_buffers.push(image_buffer);
 					TBORef(pool_index, buffer_index)
@@ -101,9 +105,17 @@ impl<B: Backend> TextureBufferLibrary<B> {
 		&self.entries[texture_ref.0].images[texture_ref.1]
 	}
 
-	pub(crate) fn get_default_ref()->TBORef{
-		TBORef(0,0)
+	pub(crate) fn get_default_ref() -> TBORef {
+		TBORef(0, 0)
 	}
+
+	fn build_rgba_image(&self, image_data: Vec<u8>, format: TextureFormat) -> image::ImageBuffer<Rgba<u8>, Vec<u8>> {
+		return match format {
+			TextureFormat::Custom((width, height)) => RgbaImage::from_raw(width, height, image_data).unwrap(),
+			TextureFormat::Png => image::load(Cursor::new(&image_data[..]), image::ImageFormat::Png).unwrap().to_rgba8(),
+		}
+	}
+
 
 	fn create_image_desc_pool(&self, capacity: usize) -> Option<<B as Backend>::DescriptorPool> {
 		let image_desc_pool = unsafe {
@@ -161,7 +173,7 @@ impl<B: Backend> TextureBufferLibrary<B> {
 		image_desc
 	}
 
-	fn create_image_buffer(&self, rgba_image: Vec<u8>, descriptor_pool: &mut Option<<B as Backend>::DescriptorPool>) -> ImageBuffer<B> {
+	fn create_image_buffer(&self, rgba_image: RgbaImage, descriptor_pool: &mut Option<<B as Backend>::DescriptorPool>) -> ImageBuffer<B> {
 		let image_desc = self.create_descriptor(descriptor_pool);
 
 		let mut staging_pool = unsafe {
@@ -171,16 +183,9 @@ impl<B: Backend> TextureBufferLibrary<B> {
 			)
 		}.expect("Cannot create staging command pool");
 
-		let img=  if rgba_image.len() > 0 {
-			image::load(Cursor::new(&rgba_image[..]), image::ImageFormat::Png).unwrap().to_rgba8()
-		}
-		else {
-			RgbaImage::from_pixel(1,1,Rgba::from([255,255,255,255]))
-		};
-
 		let image_buffer = ImageBuffer::new(
 			image_desc,
-			&img,
+			&rgba_image,
 			&self.adapter_limits,
 			&self.memory_types,
 			Usage::TRANSFER_SRC,

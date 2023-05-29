@@ -1,5 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use image::RgbaImage;
 use crate::render_resources::texture_buffer_library::TBORef;
 use crate::render_stage::RenderStage;
 
@@ -39,8 +40,14 @@ impl Color {
 #[derive(Clone, Hash)]
 pub enum Texture{
 	None,
-	Pending(Vec<u8>),
+	Pending(Vec<u8>, TextureFormat),
 	Some(TBORef)
+}
+
+#[derive(Clone, Hash)]
+pub enum TextureFormat{
+	Custom((u32,u32)),
+	Png,
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Default)]
