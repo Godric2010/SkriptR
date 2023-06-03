@@ -3,11 +3,13 @@ use std::rc::Rc;
 use winit::window::Window;
 use resa_ecs::world::World;
 use resa_renderer::{RendererConfig, ResaRenderer};
-use resa_renderer::material::{Material, MaterialRef};
+use resa_renderer::material::{Color, Material, MaterialRef, Texture};
 use resa_renderer::mesh::Mesh;
+use resa_renderer::render_stage::RenderStage;
 use crate::rendering::camera::Camera;
 use crate::rendering::mesh_renderer::MeshRenderer;
 use crate::rendering::transform::{make_transform_matrix, Transform};
+use crate::resources::loaded_resources::LoadedMaterial;
 
 pub mod mesh_renderer;
 mod camera_system;
@@ -74,7 +76,24 @@ impl RenderingSystem {
 		MeshRenderer::new(mesh_id, self.resa_renderer.clone())
 	}
 
-	pub fn load_materials(&mut self, materials: &[Material]) -> Vec<MaterialRef>{
-		self.resa_renderer.borrow_mut().register_materials(materials)
+	pub fn load_materials(&mut self, loaded_materials: &[LoadedMaterial]) -> Vec<MaterialRef>{
+
+		let materials: Vec<Material> = loaded_materials.iter().map(|loaded_mat|
+			Material{
+				name: loaded_mat.name.clone(),
+				shader_id: loaded_mat.shader.clone() as u32,
+				render_stage: RenderStage::get_stage_form_index(loaded_mat.stage),
+				color: Color {
+					r: loaded_mat.color[0],
+					g: loaded_mat.color[1],
+					b: loaded_mat.color[2],
+					a: loaded_mat.color[3],
+				},
+				texture: Texture::None /*if loaded_mat.texture.len() == 0 { Texture::None } else {Texture::Pending(loaded_mat.texture)}*/,
+			}
+		).collect();
+
+
+		self.resa_renderer.borrow_mut().register_materials(&materials)
 	}
 }

@@ -32,14 +32,13 @@ pub struct RendererConfig {
 
 pub struct ResaRenderer {
 	renderer: Renderer<backend::Backend>,
-	render_resources: RenderResources<backend::Backend>
+	render_resources: RenderResources<backend::Backend>,
 }
 
 impl ResaRenderer {
 	/// Create a new instance of the renderer
 	pub fn new(window: &Window, config: RendererConfig) -> Self {
-
-		let extent = Extent2D{width: config.extent.width, height: config.extent.height};
+		let extent = Extent2D { width: config.extent.width, height: config.extent.height };
 		let renderer = Renderer::new(window, extent);
 		let render_resources = RenderResources::new(config.shaders, &renderer);
 
@@ -63,11 +62,15 @@ impl ResaRenderer {
 		self.render_resources.material_lib.add_materials(&materials_and_stage_ids)
 	}
 
-	pub fn get_material_mut(&mut self, material_id: &MaterialRef) -> &mut Material{
+	pub fn get_material_ref_from_name(&self, name: &str) -> Option<MaterialRef> {
+		self.render_resources.material_lib.get_material_ref_from_name(name)
+	}
+
+	pub fn get_material_mut(&mut self, material_id: &MaterialRef) -> &mut Material {
 		self.render_resources.material_lib.get_material_mut(&material_id).unwrap()
 	}
 
-	pub fn update_material(&mut self, material_id: &MaterialRef, material :Material){
+	pub fn update_material(&mut self, material_id: &MaterialRef, material: Material) {
 		self.render_resources.material_lib.update_material(material_id, material);
 	}
 

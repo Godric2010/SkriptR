@@ -9,7 +9,7 @@ pub enum RenderStage {
 	UI,
 }
 
-impl fmt::Display for RenderStage{
+impl fmt::Display for RenderStage {
 	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
 		match self {
 			RenderStage::None => write!(f, "No rendering pass"),
@@ -21,7 +21,18 @@ impl fmt::Display for RenderStage{
 }
 
 impl RenderStage {
-	pub fn get_stages_in_order_of_priority() -> Vec<Self>{
+	pub fn get_stage_form_index(index: usize) -> Self {
+		match index {
+			0 => RenderStage::None,
+			1 => RenderStage::Opaque,
+			2 => RenderStage::Transparent,
+			3 => RenderStage::UI,
+			_ => panic!("Invalid index!"),
+		}
+	}
+	pub fn get_stages_in_order_of_priority() -> Vec<Self> {
 		vec![RenderStage::Opaque, RenderStage::Transparent, RenderStage::UI]
 	}
 }
+
+

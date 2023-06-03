@@ -1,11 +1,9 @@
 use std::{env, fs};
 use std::collections::HashMap;
 use std::fs::DirEntry;
-use std::path::{Path};
-use rusttype::Font;
-use resa_renderer::material::TextureFormat;
+use resa_renderer::material::{TextureFormat};
 use resa_renderer::shader::ShaderRef;
-use crate::resources::loaded_resources::{LoadedFont, LoadedImage};
+use crate::resources::loaded_resources::{LoadedFont, LoadedImage, LoadedMaterial};
 
 pub struct ResourceLoader {
 	resources_path: String,
@@ -57,7 +55,6 @@ impl ResourceLoader {
 		Some(shaders)
 	}
 
-
 	pub fn load_images(&self) -> Vec<LoadedImage> {
 		let image_dir = self.resources_path.clone() + "/images";
 		let image_paths = fs::read_dir(image_dir).unwrap();
@@ -69,7 +66,7 @@ impl ResourceLoader {
 					Some(result) => result,
 					None => continue,
 				};
-				let image   = match self.read_file_to_bytes(&file){
+				let image = match self.read_file_to_bytes(&file) {
 					Some(image) => image,
 					None => continue,
 				};
@@ -98,18 +95,18 @@ impl ResourceLoader {
 					None => continue,
 				};
 
-				if file_type != "ttf".to_string(){
+				if file_type != "ttf".to_string() {
 					continue;
 				}
 
-				let font = match self.read_file_to_bytes(&file){
+				let font = match self.read_file_to_bytes(&file) {
 					Some(font) => font,
 					None => continue,
 				};
 
 
 				fonts.push(
-					LoadedFont{
+					LoadedFont {
 						font_name: name,
 						font_data: font,
 					}
@@ -118,6 +115,36 @@ impl ResourceLoader {
 		}
 
 		fonts
+	}
+
+	pub fn load_materials(&self) -> Vec<LoadedMaterial> {
+		let material_dir = self.resources_path.clone() + "/materials";
+		let material_path = fs::read_dir(material_dir).unwrap();
+
+		let mut materials = vec![];
+		for material_file in material_path {
+			if let Ok(file) = material_file {
+				let (name, file_type) = match self.get_filename_and_type(&file) {
+					Some(result) => result,
+					None => continue,
+				};
+				let material_str = match fs::read_to_string(file.path().as_path()) {
+					Ok(str) => str,
+					Err(e) => {
+						println!("Could not read material {}", name);
+						continue;
+					}
+				};
+
+				let material = match self.parse_material(&name, &material_str) {
+					Some(mat) => mat,
+					None => continue
+				};
+
+				materials.push(material);
+			}
+		}
+		materials
 	}
 
 	fn get_filename_and_type(&self, file: &DirEntry) -> Option<(String, String)> {
@@ -134,7 +161,7 @@ impl ResourceLoader {
 		Some((name, file_type))
 	}
 
-	fn read_file_to_bytes(&self, file: &DirEntry) -> Option<Vec<u8>>{
+	fn read_file_to_bytes(&self, file: &DirEntry) -> Option<Vec<u8>> {
 		Some(match fs::read(file.path().as_path()) {
 			Ok(content) => content,
 			Err(e) => {
@@ -142,5 +169,47 @@ impl ResourceLoader {
 				return None;
 			}
 		})
+	}
+
+	fn parse_material(&self, name: &str, material_str: &str) -> Option<LoadedMaterial> {
+		let rows = material_str.split("\n");
+		let mut key_value_pairs: Vec<(String, String)> = Vec::new();
+		for row in rows {
+			if row.len() == 0 {
+				continue;
+			}
+			let pair: Vec<&str> = row.split(":").collect();
+			if pair.len() != 2 {
+				continue;
+			}
+			key_value_pairs.push((pair[0].to_string(), pair[1].to_string()));
+		}
+
+		let mut mat = LoadedMaterial {
+			name: name.to_string(),
+			shader: 0,
+			stage: 0,
+			color: [0, 0, 0, 0],
+			texture: "".to_string(),
+		};
+
+		for (key, value) in key_value_pairs {
+			match key.as_str() {
+				"shader" => { mat.shader = value.parse::<usize>().unwrap() }
+				"stage" => { mat.stage = value.parse::<usize>().unwrap() }
+				"color" => {
+					let color_values: Vec<u8> = value.split(",").map(|split| split.parse::<u8>().unwrap()).collect();
+					if color_values.len() != 4 {
+						println!("Color value of material {} is not four byte long", name);
+						return None;
+					}
+					mat.color = [color_values[0], color_values[1], color_values[2], color_values[3]];
+				}
+				"texture" => { mat.texture = value }
+				_ => {}
+			}
+		}
+
+		Some(mat)
 	}
 }

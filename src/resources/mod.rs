@@ -1,5 +1,6 @@
+use resa_renderer::material::Material;
 use resa_renderer::shader::ShaderRef;
-use crate::resources::loaded_resources::{LoadedFont, LoadedImage};
+use crate::resources::loaded_resources::{LoadedFont, LoadedImage, LoadedMaterial};
 use crate::resources::resource_loader::ResourceLoader;
 use crate::resources::static_cache::StaticResourceCache;
 
@@ -35,6 +36,8 @@ impl ResourceManager {
 	pub fn get_fonts(&self) -> Vec<(String, Vec<u8>)>{
 		self.static_cache.get_fonts().iter().map(|font| (font.font_name.clone(), font.font_data.clone())).collect()
 	}
+
+	pub fn get_materials(&self) -> Vec<LoadedMaterial>{ self.static_cache.get_materials() }
 
 	pub fn get_image(&self, name: &str, streaming: bool)-> Option<LoadedImage>{
 

@@ -51,10 +51,11 @@ impl ResaApp {
 		};
 
 		let shaders = resource_manager.get_shaders();
-		let renderer = RenderingSystem::new(&window, RendererConfig {
+		let mut renderer = RenderingSystem::new(&window, RendererConfig {
 			extent: physical_size.clone(),
 			shaders,
 		});
+		renderer.load_materials(&resource_manager.get_materials());
 
 		let ui_system = ResaUserInterface::new(resource_manager.get_fonts());
 

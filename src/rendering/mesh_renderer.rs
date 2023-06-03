@@ -19,8 +19,8 @@ impl MeshRenderer {
 		}
 	}
 
-	pub fn set_material(&mut self, material: MaterialRef){
-		self.material_id = Some(material);
+	pub fn set_material(&mut self, material_name: &str){
+		self.material_id = self.resa_renderer.borrow().get_material_ref_from_name(material_name);
 	}
 
 	pub fn get_material_ref(&self) -> &Option<MaterialRef>{
