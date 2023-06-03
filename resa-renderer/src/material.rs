@@ -56,6 +56,7 @@ pub struct MaterialRef(pub(crate) usize);
 #[derive(Hash)]
 #[derive(Clone)]
 pub struct Material {
+	pub name: String,
 	pub shader_id: u32,
 	pub render_stage: RenderStage,
 	pub color: Color,

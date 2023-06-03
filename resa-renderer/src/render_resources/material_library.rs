@@ -73,6 +73,15 @@ impl<B: Backend> MaterialLibrary<B> {
 		todo!()
 	}
 
+	pub fn get_material_ref_from_name(&self, name: &str) -> Option<MaterialRef>{
+		for (key, value) in &self.material_map{
+			if value.material.name == name.to_string(){
+				return Some(key.clone())
+			}
+		}
+		None
+	}
+
 	pub fn get_material(&self, material_ref: &MaterialRef) -> Option<&Material> {
 		Some(&self.material_map.get(material_ref)?.material)
 	}

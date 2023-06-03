@@ -11,9 +11,9 @@ use resa_ui::font_library::FontLibrary;
 
 mod rendering;
 mod resa_app;
-mod resource_loader;
 mod event;
 mod test_anim;
+mod resources;
 
 
 fn main() {
@@ -23,11 +23,6 @@ fn main() {
 	};
 
 	let world = Rc::clone(&app.world);
-	let wood_tex = app.resource_loader.load_image("Wood.png").unwrap();
-
-	let font_data = app.resource_loader.load_font("Arial").unwrap();
-	let mut font_library = FontLibrary::new();
-	font_library.add_new_font("Arial", &font_data);
 
 	let camera_entity = world.borrow_mut().new_entity();
 	let camera = Camera::new(45., [0.1, 100.], true);
@@ -36,6 +31,7 @@ fn main() {
 	world.borrow_mut().add_component(&camera_entity, transform);
 
 	let material = Material {
+		name: "Material 01".to_string(),
 		shader_id: 0,
 		render_stage: RenderStage::Transparent,
 		color: Color::new(125, 125, 125, 150),
@@ -43,6 +39,7 @@ fn main() {
 	};
 
 	let material02 = Material {
+		name: "Material 02".to_string(),
 		shader_id: 0,
 		render_stage: RenderStage::Opaque,
 		color: Color::new(0, 0, 0, 255),
@@ -50,21 +47,23 @@ fn main() {
 	};
 
 	let material03 = Material {
+		name: "Material 03".to_string(),
 		shader_id: 0,
 		render_stage: RenderStage::Opaque,
 		color: Color::new(255, 255, 255, 255),
-		texture: Texture::Pending(wood_tex.0, wood_tex.1),//wood_tex,
+		texture: Texture::None//Pending(wood_tex.0, wood_tex.1),//wood_tex,
 	};
 
-	let (font_pixels, size) = font_library.get_font_atlas_by_name("Arial").unwrap();
-	let material04 = Material{
-		shader_id: 0,
-		render_stage: RenderStage::Transparent,
-		color: Color::new(0,0,0,255),
-		texture: Texture::Pending(font_pixels, TextureFormat::Custom(size)),
-	};
+	// let (font_pixels, size) = font_library.get_font_atlas_by_name("Arial").unwrap();
+	// let material04 = Material{
+	// 	name: "Material 04".to_string(),
+	// 	shader_id: 0,
+	// 	render_stage: RenderStage::Transparent,
+	// 	color: Color::new(0,0,0,255),
+	// 	texture: Texture::Pending(font_pixels, TextureFormat::Custom(size)),
+	// };
 
-	let materials = app.rendering.load_materials(&vec![material, material02, material03, material04]);
+	let materials = app.rendering.load_materials(&vec![material, material02, material03, /*material04*/]);
 
 	let entity01 = world.borrow_mut().new_entity();
 	let transform = Transform { position: [0., 0., 0.0], angle: 0.0, scale: 1.0 };
@@ -84,7 +83,7 @@ fn main() {
 	let entity02 = world.borrow_mut().new_entity();
 	let transform = Transform { position: [0.8, 0.2, 0.0], angle: 0.0, scale: 1.0 };
 	let mut mesh_renderer = app.rendering.create_mesh_renderer(create_primitive_quad());
-	mesh_renderer.set_material(materials[3]);
+	mesh_renderer.set_material(materials[2]);
 	world.borrow_mut().add_component(&entity02, transform);
 	world.borrow_mut().add_component(&entity02, mesh_renderer);
 

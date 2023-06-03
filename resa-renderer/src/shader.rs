@@ -1,5 +1,6 @@
 use glsl_to_spirv::ShaderType;
 
+#[derive(Clone)]
 pub struct ShaderRef{
 	pub name: String,
 	pub(crate) vertex: Vec<u32>,

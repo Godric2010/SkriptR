@@ -34,7 +34,7 @@ impl ShaderLibrary {
 	/// returns: Option<&ShaderRef>
 	pub fn get_by_id(&self, shader_id: &u32) -> Option<&ShaderRef> {
 		let shader_id = shader_id.clone() as usize;
-		if shader_id > self.shader_refs.len() {
+		if shader_id >= self.shader_refs.len() {
 			return None;
 		}
 

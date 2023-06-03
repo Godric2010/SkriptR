@@ -8,8 +8,10 @@ use winit::window::{WindowBuilder, Window};
 use resa_ecs::entity::Entity;
 use resa_ecs::world::World;
 use resa_renderer::RendererConfig;
+use resa_ui::ResaUserInterface;
 use crate::rendering::RenderingSystem;
-use crate::resource_loader::ResourceLoader;
+use crate::resources::resource_loader::ResourceLoader;
+use crate::resources::ResourceManager;
 use crate::test_anim::{change_color, rotate_entity};
 
 #[allow(dead_code)]
@@ -20,14 +22,15 @@ pub struct ResaApp {
 	pub event_loop: EventLoop<()>,
 	pub window: Window,
 	pub rendering: RenderingSystem,
+	pub ui: ResaUserInterface,
 	pub world: Rc<RefCell<World>>,
-	pub resource_loader: ResourceLoader,
+	pub resource_loader: ResourceManager,
 }
 
 impl ResaApp {
 	pub fn new(name: &str, width: u32, height: u32) -> Option<Self> {
 		let event_loop = EventLoop::new();
-		let mut resource_loader = ResourceLoader::new()?;
+		let mut resource_manager = ResourceManager::new()?;
 
 		let primary_monitor = event_loop.primary_monitor()?;
 
@@ -47,11 +50,13 @@ impl ResaApp {
 			}
 		};
 
-		let shader_refs = resource_loader.load_all_shaders()?;
+		let shaders = resource_manager.get_shaders();
 		let renderer = RenderingSystem::new(&window, RendererConfig {
 			extent: physical_size.clone(),
-			shaders: shader_refs,
+			shaders,
 		});
+
+		let ui_system = ResaUserInterface::new(resource_manager.get_fonts());
 
 		let world = Rc::new(RefCell::new(World::new()));
 
@@ -62,15 +67,11 @@ impl ResaApp {
 			event_loop,
 			window,
 			rendering: renderer,
+			ui: ui_system,
 			world,
-			resource_loader,
+			resource_loader: resource_manager,
 		})
 	}
-
-	// pub fn load_mesh(&mut self, mesh: Mesh) -> MeshRenderer {
-	// 	let mesh_id = self.rendering.borrow_mut().register_mesh(mesh);
-	// 	MeshRenderer::new(mesh_id, 0)
-	// }
 
 	#[allow(unused)]
 	pub fn run_window_loop(mut self) {
