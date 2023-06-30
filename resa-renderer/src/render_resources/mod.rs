@@ -10,6 +10,7 @@ pub mod mesh_library;
 pub mod shader_library;
 pub mod texture_buffer_library;
 mod uniform_buffer_library;
+mod texture_library;
 
 
 pub struct RenderResources<B: Backend> {

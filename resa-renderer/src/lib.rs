@@ -52,6 +52,7 @@ impl ResaRenderer {
 		self.render_resources.mesh_lib.add_mesh(mesh)
 	}
 
+
 	pub fn register_materials(&mut self, materials: &[Material]) -> Vec<MaterialRef> {
 		let mut materials_and_stage_ids = vec![];
 		for mat in materials {

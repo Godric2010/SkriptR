@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use gfx_hal::Backend;
 use gfx_hal::device::Device;
-use gfx_hal::pool::{CommandPool, CommandPoolCreateFlags};
 use crate::core::CoreDevice;
 
 pub struct FramebufferData<B: Backend> {

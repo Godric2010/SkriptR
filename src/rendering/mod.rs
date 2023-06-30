@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use winit::dpi::PhysicalSize;
 use winit::window::Window;
 use resa_ecs::world::World;
 use resa_renderer::{RendererConfig, ResaRenderer};
@@ -10,6 +11,7 @@ use crate::rendering::camera::Camera;
 use crate::rendering::mesh_renderer::MeshRenderer;
 use crate::rendering::transform::{make_transform_matrix, Transform};
 use crate::resources::loaded_resources::LoadedMaterial;
+use crate::resources::ResourceManager;
 
 pub mod mesh_renderer;
 mod camera_system;
@@ -25,9 +27,19 @@ pub struct RenderingSystem {
 }
 
 impl RenderingSystem {
-	pub fn new(window: &Window, config: RendererConfig) -> RenderingSystem {
+	pub fn new(window: &Window, size: PhysicalSize<u32>, resources: &ResourceManager) -> RenderingSystem {
+
+		let shaders = resources.get_shaders();
+		let materials = RenderingSystem::load_materials(&resources.get_materials());
+		let config = RendererConfig{
+			extent: size,
+			shaders,
+		};
+		let mut renderer = ResaRenderer::new(window, config);
+		renderer.register_materials(&materials);
+
 		RenderingSystem {
-			resa_renderer: Rc::new(RefCell::new(ResaRenderer::new(window, config))),
+			resa_renderer: Rc::new(RefCell::new(renderer)),
 			reconfigure_swapchain: true,
 			frames_drawn: 0,
 		}
@@ -76,10 +88,9 @@ impl RenderingSystem {
 		MeshRenderer::new(mesh_id, self.resa_renderer.clone())
 	}
 
-	pub fn load_materials(&mut self, loaded_materials: &[LoadedMaterial]) -> Vec<MaterialRef>{
-
+	fn load_materials(loaded_materials: &[LoadedMaterial]) -> Vec<Material> {
 		let materials: Vec<Material> = loaded_materials.iter().map(|loaded_mat|
-			Material{
+			Material {
 				name: loaded_mat.name.clone(),
 				shader_id: loaded_mat.shader.clone() as u32,
 				render_stage: RenderStage::get_stage_form_index(loaded_mat.stage),
@@ -92,8 +103,8 @@ impl RenderingSystem {
 				texture: Texture::None /*if loaded_mat.texture.len() == 0 { Texture::None } else {Texture::Pending(loaded_mat.texture)}*/,
 			}
 		).collect();
+		materials
 
-
-		self.resa_renderer.borrow_mut().register_materials(&materials)
+		// self.resa_renderer.borrow_mut().register_materials(&materials)
 	}
 }

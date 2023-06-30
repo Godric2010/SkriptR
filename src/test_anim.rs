@@ -14,7 +14,7 @@ pub fn rotate_entity(world: &Rc<RefCell<World>>, entity: &Entity, delta_time: &f
 
 }
 
-pub fn change_color(world: &Rc<RefCell<World>>, entity: &Entity, delta_time: &f64){
+pub fn change_color(world: &Rc<RefCell<World>>, entity: &Entity, _delta_time: &f64){
 	let mut world_binding = world.borrow_mut();
 	let mesh_renderer: &mut MeshRenderer = world_binding.get_component_mut::<MeshRenderer>(&entity).unwrap();
 	let mut material = mesh_renderer.get_material();

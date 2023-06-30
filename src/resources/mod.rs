@@ -1,6 +1,5 @@
-use resa_renderer::material::Material;
 use resa_renderer::shader::ShaderRef;
-use crate::resources::loaded_resources::{LoadedFont, LoadedImage, LoadedMaterial};
+use crate::resources::loaded_resources::{LoadedImage, LoadedMaterial};
 use crate::resources::resource_loader::ResourceLoader;
 use crate::resources::static_cache::StaticResourceCache;
 
@@ -10,6 +9,7 @@ mod static_cache;
 
 
 pub struct ResourceManager{
+    #[allow(dead_code)]
 	static_loader: ResourceLoader,
 	// stream_loader: ResourceStreamer,
 	static_cache: StaticResourceCache,

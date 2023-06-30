@@ -7,7 +7,7 @@ use gfx_hal::buffer::Usage;
 use gfx_hal::device::Device;
 use gfx_hal::pool::CommandPoolCreateFlags;
 use gfx_hal::pso::{DescriptorPoolCreateFlags, DescriptorRangeDesc, DescriptorSetLayoutBinding, DescriptorType, ImageDescriptorType, ShaderStageFlags};
-use image::{Pixel, Rgba, RgbaImage};
+use image::{Rgba, RgbaImage};
 use crate::core::CoreDevice;
 use crate::descriptors::{DescSet, DescSetLayout};
 use crate::image_buffer::ImageBuffer;

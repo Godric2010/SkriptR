@@ -124,13 +124,13 @@ impl ResourceLoader {
 		let mut materials = vec![];
 		for material_file in material_path {
 			if let Ok(file) = material_file {
-				let (name, file_type) = match self.get_filename_and_type(&file) {
+				let (name, _file_type) = match self.get_filename_and_type(&file) {
 					Some(result) => result,
 					None => continue,
 				};
 				let material_str = match fs::read_to_string(file.path().as_path()) {
 					Ok(str) => str,
-					Err(e) => {
+					Err(_e) => {
 						println!("Could not read material {}", name);
 						continue;
 					}

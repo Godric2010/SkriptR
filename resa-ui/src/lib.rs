@@ -4,6 +4,7 @@ mod font;
 pub mod font_library;
 pub mod ui_element;
 
+#[allow(dead_code)]
 pub struct ResaUserInterface{
 	font_library: FontLibrary,
 }

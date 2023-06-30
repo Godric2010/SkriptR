@@ -1,16 +1,14 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::{Instant};
+use std::time::Instant;
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{WindowBuilder, Window};
 use resa_ecs::entity::Entity;
 use resa_ecs::world::World;
-use resa_renderer::RendererConfig;
 use resa_ui::ResaUserInterface;
 use crate::rendering::RenderingSystem;
-use crate::resources::resource_loader::ResourceLoader;
 use crate::resources::ResourceManager;
 use crate::test_anim::{change_color, rotate_entity};
 
@@ -30,7 +28,7 @@ pub struct ResaApp {
 impl ResaApp {
 	pub fn new(name: &str, width: u32, height: u32) -> Option<Self> {
 		let event_loop = EventLoop::new();
-		let mut resource_manager = ResourceManager::new()?;
+		let resource_manager = ResourceManager::new()?;
 
 		let primary_monitor = event_loop.primary_monitor()?;
 
@@ -50,12 +48,7 @@ impl ResaApp {
 			}
 		};
 
-		let shaders = resource_manager.get_shaders();
-		let mut renderer = RenderingSystem::new(&window, RendererConfig {
-			extent: physical_size.clone(),
-			shaders,
-		});
-		renderer.load_materials(&resource_manager.get_materials());
+		let renderer = RenderingSystem::new(&window, physical_size.clone(), &resource_manager);
 
 		let ui_system = ResaUserInterface::new(resource_manager.get_fonts());
 

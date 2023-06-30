@@ -1,6 +1,4 @@
-use std::env::current_exe;
-use std::ops::Range;
-use rusttype::{point, Point, Scale};
+use rusttype::{point, Scale};
 
 #[derive(Clone)]
 pub struct Atlas {

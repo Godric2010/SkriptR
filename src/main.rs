@@ -5,9 +5,6 @@ use resa_renderer::mesh::{create_primitive_cube, create_primitive_quad, create_p
 
 use rendering::camera::Camera;
 use rendering::transform::Transform;
-use resa_renderer::material::{Color, Material, Texture, TextureFormat};
-use resa_renderer::render_stage::RenderStage;
-use resa_ui::font_library::FontLibrary;
 
 mod rendering;
 mod resa_app;
@@ -30,7 +27,7 @@ fn main() {
 	world.borrow_mut().add_component(&camera_entity, camera);
 	world.borrow_mut().add_component(&camera_entity, transform);
 
-	let material = Material {
+	/*let material = Material {
 		name: "Material 01".to_string(),
 		shader_id: 0,
 		render_stage: RenderStage::Transparent,
@@ -52,7 +49,7 @@ fn main() {
 		render_stage: RenderStage::Opaque,
 		color: Color::new(255, 255, 255, 255),
 		texture: Texture::None//Pending(wood_tex.0, wood_tex.1),//wood_tex,
-	};
+	};*/
 
 	// let (font_pixels, size) = font_library.get_font_atlas_by_name("Arial").unwrap();
 	// let material04 = Material{

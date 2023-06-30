@@ -66,10 +66,10 @@ impl<B: Backend> Renderer<B> {
 		let mut present_semaphores = vec![];
 		for _ in 0..swapchain_images {
 			command_buffers.push(unsafe { command_pool.allocate_one(Level::Primary) });
-			present_semaphores.push(unsafe { device.borrow().device.create_semaphore().unwrap() })
-		}
+			present_semaphores.push(device.borrow().device.create_semaphore().unwrap());
+        }
 
-		let draw_fence = unsafe { device.borrow().device.create_fence(true) }.unwrap();
+		let draw_fence =  device.borrow().device.create_fence(true).unwrap();
 
 		let viewport = swapchain.make_viewport();
 

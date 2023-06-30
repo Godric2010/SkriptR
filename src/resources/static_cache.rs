@@ -1,4 +1,3 @@
-use resa_renderer::material::Material;
 use resa_renderer::shader::ShaderRef;
 use crate::resources::loaded_resources::{LoadedFont, LoadedImage, LoadedMaterial};
 use crate::resources::resource_loader::ResourceLoader;
